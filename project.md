@@ -41,6 +41,7 @@ examples/
   encrypted-storage.ts
   error-handling.ts
   file-operations.ts
+  json-operations.ts
   url-operations.ts
 src/
   client/
@@ -563,6 +564,141 @@ if (import.meta.main) {
 }
 ```
 
+## File: examples/json-operations.ts
+```typescript
+/**
+ * JSON Operations Example
+ * 
+ * This example demonstrates how to store and retrieve JSON data
+ * using the Walrus SDK.
+ */
+
+import { createWalrusClient } from "../src";
+
+async function main() {
+  // Initialize client
+  const client = createWalrusClient();
+
+  try {
+    // Create some JSON data to store
+    const jsonData = {
+      name: "Walrus Protocol",
+      description: "Decentralized storage on Sui",
+      features: ["Fast", "Secure", "Decentralized"],
+      metrics: {
+        reliability: 99.9,
+        nodes: 42,
+        storageCapacity: "1PB"
+      },
+      active: true,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log("JSON data to store:", jsonData);
+    console.log("\nStoring JSON data to Walrus...");
+
+    // Store the JSON data for 10 epochs
+    const storeResponse = await client.storeJSON(jsonData, { epochs: 10 });
+
+    console.log(`JSON data stored with blob ID: ${storeResponse.blob.blobId}`);
+    console.log(`Will be available until epoch: ${storeResponse.blob.endEpoch}`);
+
+    // Get metadata about the stored blob
+    const metadata = await client.head(storeResponse.blob.blobId);
+    console.log(`Content size: ${metadata.contentLength} bytes`);
+    console.log(`Content type: ${metadata.contentType}`);
+
+    // Retrieve the JSON data
+    console.log("\nRetrieving stored JSON data...");
+    const retrievedData = await client.readJSON(storeResponse.blob.blobId);
+
+    // Display the retrieved data
+    console.log("Retrieved JSON data:", retrievedData);
+
+    // Demonstrate with generic type parameter for type safety
+    interface ConfigData {
+      name: string;
+      features: string[];
+      metrics: {
+        reliability: number;
+        nodes: number;
+        storageCapacity: string;
+      };
+      active: boolean;
+      timestamp: string;
+    }
+
+    // Retrieve with type checking
+    console.log("\nRetrieving with type checking...");
+    const typedData = await client.readJSON<ConfigData>(storeResponse.blob.blobId);
+    console.log(`Name: ${typedData.name}`);
+    console.log(`Features: ${typedData.features.join(", ")}`);
+    console.log(`Reliability: ${typedData.metrics.reliability}%`);
+    console.log(`Active: ${typedData.active}`);
+
+    // Demonstrate with encryption
+    console.log("\nDemonstrating encrypted JSON storage...");
+
+    // Generate a random encryption key (32 bytes for AES-256)
+    const key = crypto.getRandomValues(new Uint8Array(32));
+    console.log(`Generated encryption key: ${bytesToHex(key).substring(0, 16)}...`);
+
+    // Store sensitive JSON with encryption
+    const sensitiveData = {
+      apiKey: "secret-api-key-12345",
+      accessToken: "jwt-token-with-sensitive-data",
+      userInfo: {
+        id: 123456,
+        email: "user@example.com",
+        role: "admin"
+      }
+    };
+
+    const encryptedResponse = await client.storeJSON(sensitiveData, {
+      epochs: 5,
+      encryption: {
+        key
+      }
+    });
+
+    console.log(`Encrypted JSON stored with blob ID: ${encryptedResponse.blob.blobId}`);
+
+    // Try to read without decryption - will throw an error when parsing
+    console.log("\nAttempting to read encrypted JSON without decryption...");
+    try {
+      await client.readJSON(encryptedResponse.blob.blobId);
+    } catch (error) {
+      console.log("Error as expected:", (error as Error).message);
+    }
+
+    // Read with decryption
+    console.log("\nReading encrypted JSON with proper decryption...");
+    const decryptedData = await client.readJSON(encryptedResponse.blob.blobId, {
+      encryption: {
+        key
+      }
+    });
+
+    console.log("Decrypted sensitive data:", decryptedData);
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+// Helper function to convert bytes to hex string
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// Only run if this file is being executed directly
+if (import.meta.main) {
+  main().catch(console.error);
+}
+```
+
 ## File: examples/url-operations.ts
 ```typescript
 /**
@@ -680,6 +816,7 @@ import {
   sleep,
   parseErrorResponse,
   combineURLs,
+  getContentTypeFromFilename,
 } from '../utils/helpers';
 import { createCipher } from '../encryption';
 import type { CipherOptions } from '../encryption';
@@ -795,12 +932,15 @@ export function createWalrusClient(options: ClientOptions = {}) {
       url += `?epochs=${options.epochs}`;
     }
 
+    // Set up headers with content type if specified
+    const headers: Record<string, string> = {
+      'Content-Type': options.contentType || 'application/octet-stream',
+    };
+
     // Create request
     const init: RequestInit = {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
+      headers,
       body,
     };
 
@@ -810,6 +950,36 @@ export function createWalrusClient(options: ClientOptions = {}) {
     // Parse and normalize response
     const responseData = await response.json() as StoreResponse;
     return normalizeBlobResponse(responseData);
+  };
+
+  /**
+   * Stores JSON data on the Walrus Publisher
+   * @param data JSON-serializable data to store
+   * @param options Storage options
+   * @returns Response with blob information
+   */
+  const storeJSON = async (data: unknown, options: StoreOptions = {}): Promise<StoreResponse> => {
+    try {
+      // Convert JSON to string
+      const jsonString = JSON.stringify(data);
+
+      // Convert string to Uint8Array using TextEncoder
+      const encoder = new TextEncoder();
+      const uint8Data = encoder.encode(jsonString);
+
+      // Use existing store method with content type set to application/json
+      const requestOptions: StoreOptions = {
+        ...options,
+        contentType: 'application/json'
+      };
+
+      return await store(uint8Data, requestOptions);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw createWalrusError(`Failed to store JSON data: ${error.message}`, { cause: error });
+      }
+      throw createWalrusError('Failed to store JSON data: unknown error');
+    }
   };
 
   /**
@@ -896,8 +1066,14 @@ export function createWalrusClient(options: ClientOptions = {}) {
     // Create a new Uint8Array with explicit typing to avoid ArrayBufferLike issues
     const data = new Uint8Array(new Uint8Array(fileData));
 
+    // Auto-detect content type from filename if not explicitly provided
+    const requestOptions: StoreOptions = {
+      ...options,
+      contentType: options.contentType || getContentTypeFromFilename(filePath)
+    };
+
     // Store the file content
-    return store(data, options);
+    return store(data, requestOptions);
   };
 
   /**
@@ -935,6 +1111,31 @@ export function createWalrusClient(options: ClientOptions = {}) {
     }
 
     return data;
+  };
+
+  /**
+   * Retrieves JSON data from the Walrus Aggregator
+   * @param blobId Blob ID to retrieve
+   * @param options Read options
+   * @returns Retrieved and parsed JSON data
+   */
+  const readJSON = async <T = unknown>(blobId: string, options: ReadOptions = {}): Promise<T> => {
+    try {
+      // Read the binary data
+      const data = await read(blobId, options);
+
+      // Convert binary data to string
+      const decoder = new TextDecoder();
+      const jsonString = decoder.decode(data);
+
+      // Parse the JSON string
+      return JSON.parse(jsonString) as T;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw createWalrusError(`Failed to read JSON data: ${error.message}`, { cause: error });
+      }
+      throw createWalrusError('Failed to read JSON data: unknown error');
+    }
   };
 
   /**
@@ -1038,10 +1239,12 @@ export function createWalrusClient(options: ClientOptions = {}) {
   // Return the client interface
   return {
     store,
+    storeJSON,
     storeFromStream,
     storeFromURL,
     storeFile,
     read,
+    readJSON,
     readToFile,
     readToStream,
     head,
@@ -1868,6 +2071,9 @@ export interface StoreOptions {
 
   /** Optional encryption configuration. If provided, data will be encrypted before storage */
   encryption?: EncryptionOptions;
+
+  /** Content type of the data being stored (e.g., 'application/json', 'image/png') */
+  contentType?: string;
 }
 
 /**
@@ -2188,6 +2394,77 @@ export function combineURLs(baseURL: string, path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
 }
+
+/**
+ * Gets content type based on file extension
+ * @param filename The filename or path to determine content type for
+ * @returns The MIME type for the file or 'application/octet-stream' if not determined
+ */
+export function getContentTypeFromFilename(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop() || '';
+
+  const contentTypes: Record<string, string> = {
+    // Text files
+    'txt': 'text/plain',
+    'html': 'text/html',
+    'htm': 'text/html',
+    'css': 'text/css',
+    'csv': 'text/csv',
+    'js': 'text/javascript',
+    'ts': 'text/typescript',
+    'md': 'text/markdown',
+
+    // Documents
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+
+    // Images
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'webp': 'image/webp',
+    'ico': 'image/x-icon',
+
+    // Audio
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg',
+
+    // Video
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'avi': 'video/x-msvideo',
+
+    // Data formats
+    'json': 'application/json',
+    'xml': 'application/xml',
+    'yaml': 'application/yaml',
+    'yml': 'application/yaml',
+
+    // Archives
+    'zip': 'application/zip',
+    'tar': 'application/x-tar',
+    'gz': 'application/gzip',
+    'rar': 'application/vnd.rar',
+    '7z': 'application/x-7z-compressed',
+
+    // Miscellaneous
+    'wasm': 'application/wasm',
+    'ttf': 'font/ttf',
+    'otf': 'font/otf',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+  };
+
+  return contentTypes[ext] || 'application/octet-stream';
+}
 ```
 
 ## File: src/index.ts
@@ -2220,7 +2497,8 @@ export type { WalrusError } from './types';
 export {
   validateUint8Array,
   validateAesKey,
-  combineURLs
+  combineURLs,
+  getContentTypeFromFilename
 } from './utils/helpers';
 
 // Export constants
@@ -2267,6 +2545,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+project.md
 ```
 
 ## File: biome.json
@@ -2313,6 +2593,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
   "workspaces": {
     "": {
       "name": "walrus-sdk",
+      "dependencies": {
+        "winston": "^3.17.0",
+      },
       "devDependencies": {
         "@biomejs/biome": "^1.9.4",
         "@types/bun": "^1.2.5",
@@ -2341,17 +2624,77 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@1.9.4", "", { "os": "win32", "cpu": "x64" }, "sha512-8Y5wMhVIPaWe6jw2H+KlEm4wP/f7EW3810ZLmDlrEEy5KvBsb9ECEfu/kMWD484ijfQ8+nIi0giMgu9g1UAuuA=="],
 
+    "@colors/colors": ["@colors/colors@1.6.0", "", {}, "sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA=="],
+
+    "@dabh/diagnostics": ["@dabh/diagnostics@2.0.3", "", { "dependencies": { "colorspace": "1.1.x", "enabled": "2.0.x", "kuler": "^2.0.0" } }, "sha512-hrlQOIi7hAfzsMqlGSFyVucrx38O+j6wiGOf//H2ecvIEqYN4ADBSS2iLMh5UFyDunCNniUIPk/q3riFv45xRA=="],
+
     "@types/bun": ["@types/bun@1.2.5", "", { "dependencies": { "bun-types": "1.2.5" } }, "sha512-w2OZTzrZTVtbnJew1pdFmgV99H0/L+Pvw+z1P67HaR18MHOzYnTYOi6qzErhK8HyT+DB782ADVPPE92Xu2/Opg=="],
 
     "@types/node": ["@types/node@22.13.10", "", { "dependencies": { "undici-types": "~6.20.0" } }, "sha512-I6LPUvlRH+O6VRUqYOcMudhaIdUVWfsjnZavnsraHvpBwaEyMN29ry+0UVJhImYL16xsscu0aske3yA+uPOWfw=="],
 
+    "@types/triple-beam": ["@types/triple-beam@1.3.5", "", {}, "sha512-6WaYesThRMCl19iryMYP7/x2OVgCtbIVflDGFpWnb9irXI3UjYE4AzmYuiUKY1AJstGijoY+MgUszMgRxIYTYw=="],
+
     "@types/ws": ["@types/ws@8.5.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-bd/YFLW+URhBzMXurx7lWByOu+xzU9+kb3RboOteXYDfW+tr+JZa99OyNmPINEGB/ahzKrEuc8rcv4gnpJmxTw=="],
 
+    "async": ["async@3.2.6", "", {}, "sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA=="],
+
     "bun-types": ["bun-types@1.2.5", "", { "dependencies": { "@types/node": "*", "@types/ws": "~8.5.10" } }, "sha512-3oO6LVGGRRKI4kHINx5PIdIgnLRb7l/SprhzqXapmoYkFl5m4j6EvALvbDVuuBFaamB46Ap6HCUxIXNLCGy+tg=="],
+
+    "color": ["color@3.2.1", "", { "dependencies": { "color-convert": "^1.9.3", "color-string": "^1.6.0" } }, "sha512-aBl7dZI9ENN6fUGC7mWpMTPNHmWUSNan9tuWN6ahh5ZLNk9baLJOnSMlrQkHcrfFgz2/RigjUVAjdx36VcemKA=="],
+
+    "color-convert": ["color-convert@1.9.3", "", { "dependencies": { "color-name": "1.1.3" } }, "sha512-QfAUtd+vFdAtFQcC8CCyYt1fYWxSqAiK2cSD6zDB8N3cpsEBAvRxp9zOGg6G/SHHJYAT88/az/IuDGALsNVbGg=="],
+
+    "color-name": ["color-name@1.1.3", "", {}, "sha512-72fSenhMw2HZMTVHeCA9KCmpEIbzWiQsjN+BHcBbS9vr1mtt+vJjPdksIBNUmKAW8TFUDPJK5SUU3QhE9NEXDw=="],
+
+    "color-string": ["color-string@1.9.1", "", { "dependencies": { "color-name": "^1.0.0", "simple-swizzle": "^0.2.2" } }, "sha512-shrVawQFojnZv6xM40anx4CkoDP+fZsw/ZerEMsW/pyzsRbElpsL/DBVW7q3ExxwusdNXI3lXpuhEZkzs8p5Eg=="],
+
+    "colorspace": ["colorspace@1.1.4", "", { "dependencies": { "color": "^3.1.3", "text-hex": "1.0.x" } }, "sha512-BgvKJiuVu1igBUF2kEjRCZXol6wiiGbY5ipL/oVPwm0BL9sIpMIzM8IK7vwuxIIzOXMV3Ey5w+vxhm0rR/TN8w=="],
+
+    "enabled": ["enabled@2.0.0", "", {}, "sha512-AKrN98kuwOzMIdAizXGI86UFBoo26CL21UM763y1h/GMSJ4/OHU9k2YlsmBpyScFo/wbLzWQJBMCW4+IO3/+OQ=="],
+
+    "fecha": ["fecha@4.2.3", "", {}, "sha512-OP2IUU6HeYKJi3i0z4A19kHMQoLVs4Hc+DPqqxI2h/DPZHTm/vjsfC6P0b4jCMy14XizLBqvndQ+UilD7707Jw=="],
+
+    "fn.name": ["fn.name@1.1.0", "", {}, "sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw=="],
+
+    "inherits": ["inherits@2.0.4", "", {}, "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ=="],
+
+    "is-arrayish": ["is-arrayish@0.3.2", "", {}, "sha512-eVRqCvVlZbuw3GrM63ovNSNAeA1K16kaR/LRY/92w0zxQ5/1YzwblUX652i4Xs9RwAGjW9d9y6X88t8OaAJfWQ=="],
+
+    "is-stream": ["is-stream@2.0.1", "", {}, "sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg=="],
+
+    "kuler": ["kuler@2.0.0", "", {}, "sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A=="],
+
+    "logform": ["logform@2.7.0", "", { "dependencies": { "@colors/colors": "1.6.0", "@types/triple-beam": "^1.3.2", "fecha": "^4.2.0", "ms": "^2.1.1", "safe-stable-stringify": "^2.3.1", "triple-beam": "^1.3.0" } }, "sha512-TFYA4jnP7PVbmlBIfhlSe+WKxs9dklXMTEGcBCIvLhE/Tn3H6Gk1norupVW7m5Cnd4bLcr08AytbyV/xj7f/kQ=="],
+
+    "ms": ["ms@2.1.3", "", {}, "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="],
+
+    "one-time": ["one-time@1.0.0", "", { "dependencies": { "fn.name": "1.x.x" } }, "sha512-5DXOiRKwuSEcQ/l0kGCF6Q3jcADFv5tSmRaJck/OqkVFcOzutB134KRSfF0xDrL39MNnqxbHBbUUcjZIhTgb2g=="],
+
+    "readable-stream": ["readable-stream@3.6.2", "", { "dependencies": { "inherits": "^2.0.3", "string_decoder": "^1.1.1", "util-deprecate": "^1.0.1" } }, "sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA=="],
+
+    "safe-buffer": ["safe-buffer@5.2.1", "", {}, "sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ=="],
+
+    "safe-stable-stringify": ["safe-stable-stringify@2.5.0", "", {}, "sha512-b3rppTKm9T+PsVCBEOUR46GWI7fdOs00VKZ1+9c1EWDaDMvjQc6tUwuFyIprgGgTcWoVHSKrU8H31ZHA2e0RHA=="],
+
+    "simple-swizzle": ["simple-swizzle@0.2.2", "", { "dependencies": { "is-arrayish": "^0.3.1" } }, "sha512-JA//kQgZtbuY83m+xT+tXJkmJncGMTFT+C+g2h2R9uxkYIrE2yy9sgmcLhCnw57/WSD+Eh3J97FPEDFnbXnDUg=="],
+
+    "stack-trace": ["stack-trace@0.0.10", "", {}, "sha512-KGzahc7puUKkzyMt+IqAep+TVNbKP+k2Lmwhub39m1AsTSkaDutx56aDCo+HLDzf/D26BIHTJWNiTG1KAJiQCg=="],
+
+    "string_decoder": ["string_decoder@1.3.0", "", { "dependencies": { "safe-buffer": "~5.2.0" } }, "sha512-hkRX8U1WjJFd8LsDJ2yQ/wWWxaopEsABU1XfkM8A+j0+85JAGppt16cr1Whg6KIbb4okU6Mql6BOj+uup/wKeA=="],
+
+    "text-hex": ["text-hex@1.0.0", "", {}, "sha512-uuVGNWzgJ4yhRaNSiubPY7OjISw4sw4E5Uv0wbjp+OzcbmVU/rsT8ujgcXJhn9ypzsgr5vlzpPqP+MBBKcGvbg=="],
+
+    "triple-beam": ["triple-beam@1.4.1", "", {}, "sha512-aZbgViZrg1QNcG+LULa7nhZpJTZSLm/mXnHXnbAbjmN5aSa0y7V+wvv6+4WaBtpISJzThKy+PIPxc1Nq1EJ9mg=="],
 
     "typescript": ["typescript@5.8.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ=="],
 
     "undici-types": ["undici-types@6.20.0", "", {}, "sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg=="],
+
+    "util-deprecate": ["util-deprecate@1.0.2", "", {}, "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw=="],
+
+    "winston": ["winston@3.17.0", "", { "dependencies": { "@colors/colors": "^1.6.0", "@dabh/diagnostics": "^2.0.2", "async": "^3.2.3", "is-stream": "^2.0.0", "logform": "^2.7.0", "one-time": "^1.0.0", "readable-stream": "^3.4.0", "safe-stable-stringify": "^2.3.1", "stack-trace": "0.0.x", "triple-beam": "^1.3.0", "winston-transport": "^4.9.0" } }, "sha512-DLiFIXYC5fMPxaRg832S6F5mJYvePtmO5G9v9IgUFPhXm9/GkXarH/TUrBAVzhTCzAj9anE/+GjrgXp/54nOgw=="],
+
+    "winston-transport": ["winston-transport@4.9.0", "", { "dependencies": { "logform": "^2.7.0", "readable-stream": "^3.6.2", "triple-beam": "^1.3.0" } }, "sha512-8drMJ4rkgaPo1Me4zD/3WLfI/zPdA9o2IipKODunnGDcuqbHwjsbB79ylv04LCGGzU0xQ6vTznOMpQGaLhhm6A=="],
   }
 }
 ```
@@ -2402,7 +2745,8 @@ SOFTWARE.
     "example:file": "bun run examples/file-operations.ts",
     "example:url": "bun run examples/url-operations.ts",
     "example:client": "bun run examples/custom-client.ts",
-    "example:error": "bun run examples/error-handling.ts"
+    "example:error": "bun run examples/error-handling.ts",
+    "example:json": "bun run examples/json-operations.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -2425,7 +2769,10 @@ SOFTWARE.
     "bun"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "winston": "^3.17.0"
+  }
 }
 ```
 

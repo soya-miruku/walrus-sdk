@@ -2,6 +2,8 @@
  * Types for the Walrus SDK
  */
 
+import type { LoggerOptions } from '../utils/logger';
+
 /**
  * Configuration options for the Walrus client
  */
@@ -23,6 +25,9 @@ export interface ClientOptions {
 
   /** Custom fetch implementation (defaults to Bun's native fetch) */
   fetch?: typeof fetch;
+
+  /** Logger configuration options */
+  logger?: LoggerOptions;
 }
 
 /**

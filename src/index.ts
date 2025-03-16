@@ -36,3 +36,7 @@ export {
   DEFAULT_TESTNET_PUBLISHERS,
   DEFAULT_CONFIG
 } from './utils/constants';
+
+// Export logger
+export { default as logger, createLogger, configureLogger, LogLevel } from './utils/logger';
+export type { LoggerOptions } from './utils/logger';
