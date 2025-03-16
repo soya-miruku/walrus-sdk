@@ -1,14 +1,11 @@
 name: Publish Package to NPM
 
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+      - main
+      - master
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to publish (semver format: major.minor.patch)'
-        required: false
-        default: ''
 
 jobs:
   publish:
@@ -16,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -34,14 +33,16 @@ jobs:
       - name: Run tests
         run: bun test
 
-      - name: Configure npm
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
 
-      - name: Bump version if provided
-        if: github.event.inputs.version != ''
-        run: |
-          bun npm version ${{ github.event.inputs.version }} --no-git-tag-version
+      - name: Install semantic-release
+        run: bun add -d semantic-release @semantic-release/git @semantic-release/changelog
 
-      - name: Publish to npm
-        run: bun publish --access public 
+      - name: Release
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bunx semantic-release 
