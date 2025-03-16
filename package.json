@@ -8,7 +8,7 @@
 	"types": "dist/index.d.ts",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/yourusername/walrus-sdk.git"
+		"url": "https://github.com/soya-miruku/walrus-sdk.git"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -35,8 +35,19 @@
 	"peerDependencies": {
 		"typescript": "^5.8.2"
 	},
-	"files": ["dist", "src", "examples"],
-	"keywords": ["walrus", "sui", "storage", "sdk", "decentralized", "bun"],
+	"files": [
+		"dist",
+		"src",
+		"examples"
+	],
+	"keywords": [
+		"walrus",
+		"sui",
+		"storage",
+		"sdk",
+		"decentralized",
+		"bun"
+	],
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
