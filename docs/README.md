@@ -6,7 +6,6 @@ Welcome to the Walrus SDK documentation. This directory contains comprehensive d
 
 ### Core Documentation
 
-- [Project Overview](./project.md) - Complete overview of the SDK
 - [Getting Started](./getting-started.md) - Quick start guide
 - [API Reference](./api-reference.md) - Detailed API documentation
 - [Encryption Guide](./encryption.md) - Using encryption features

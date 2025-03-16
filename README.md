@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>🌊 Walrus SDK</h1>
+  <img src="docs/walrus-icon.svg" alt="Walrus Logo" width="120" />
+  <h1>Walrus Typescript SDK</h1>
   
   <p>A TypeScript SDK for the <a href="https://docs.walrus.site/">Walrus</a> decentralized storage protocol built on <a href="https://sui.io/">Sui</a></p>
 
@@ -169,8 +170,16 @@ const client = createWalrusClient({
     <td>Store a file from disk</td>
   </tr>
   <tr>
+    <td><code>storeJSON(data, options)</code></td>
+    <td>Store JSON data with proper serialization</td>
+  </tr>
+  <tr>
     <td><code>read(blobId, options)</code></td>
     <td>Read data as Uint8Array</td>
+  </tr>
+  <tr>
+    <td><code>readJSON(blobId, options)</code></td>
+    <td>Read and parse JSON data</td>
   </tr>
   <tr>
     <td><code>readToFile(blobId, path, options)</code></td>
@@ -226,6 +235,65 @@ bun run example:file       # File and stream operations
 bun run example:url        # Working with remote URLs
 bun run example:client     # Custom client configuration
 bun run example:error      # Error handling techniques
+bun run example:json       # JSON data operations
+bun run example:logging    # Logging configuration
+```
+
+### Working with JSON Data
+
+```typescript
+import { createWalrusClient } from 'walrus-sdk';
+
+// Create client
+const client = createWalrusClient();
+
+// Store JSON data
+const jsonData = {
+  name: "Walrus Protocol",
+  description: "Decentralized storage on Sui",
+  features: ["Fast", "Secure", "Decentralized"],
+  metrics: {
+    reliability: 99.9,
+    nodes: 42,
+    storageCapacity: "1PB",
+  }
+};
+
+// Store the data
+const response = await client.storeJSON(jsonData, { epochs: 10 });
+console.log(`JSON data stored with blob ID: ${response.blob.blobId}`);
+
+// Retrieve the data with type safety
+interface WalrusConfig {
+  name: string;
+  features: string[];
+  metrics: {
+    reliability: number;
+    nodes: number;
+    storageCapacity: string;
+  };
+}
+
+// Retrieve with type checking
+const typedData = await client.readJSON<WalrusConfig>(response.blob.blobId);
+console.log(`Name: ${typedData.name}`);
+console.log(`Features: ${typedData.features.join(", ")}`);
+console.log(`Reliability: ${typedData.metrics.reliability}%`);
+
+// Store sensitive data with encryption
+const key = crypto.getRandomValues(new Uint8Array(32));
+const encryptedResponse = await client.storeJSON(
+  { apiKey: "secret-key-12345", accessToken: "sensitive-token" },
+  {
+    epochs: 5,
+    encryption: { key }
+  }
+);
+
+// Read with decryption
+const decryptedData = await client.readJSON(encryptedResponse.blob.blobId, {
+  encryption: { key }
+});
 ```
 
 See the [examples directory](./examples) for more detailed examples and documentation.
@@ -290,7 +358,7 @@ The SDK will continue to evolve with these planned features:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/walrus-sdk.git
+git clone https://github.com/soya-miruku/walrus-sdk.git
 cd walrus-sdk
 
 # Install dependencies
