@@ -62,6 +62,9 @@ export interface StoreOptions {
 
   /** Optional encryption configuration. If provided, data will be encrypted before storage */
   encryption?: EncryptionOptions;
+
+  /** Content type of the data being stored (e.g., 'application/json', 'image/png') */
+  contentType?: string;
 }
 
 /**

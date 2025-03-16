@@ -17,7 +17,8 @@
     "example:file": "bun run examples/file-operations.ts",
     "example:url": "bun run examples/url-operations.ts",
     "example:client": "bun run examples/custom-client.ts",
-    "example:error": "bun run examples/error-handling.ts"
+    "example:error": "bun run examples/error-handling.ts",
+    "example:json": "bun run examples/json-operations.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

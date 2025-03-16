@@ -16,6 +16,7 @@ import {
   sleep,
   parseErrorResponse,
   combineURLs,
+  getContentTypeFromFilename,
 } from '../utils/helpers';
 import { createCipher } from '../encryption';
 import type { CipherOptions } from '../encryption';
@@ -131,12 +132,15 @@ export function createWalrusClient(options: ClientOptions = {}) {
       url += `?epochs=${options.epochs}`;
     }
 
+    // Set up headers with content type if specified
+    const headers: Record<string, string> = {
+      'Content-Type': options.contentType || 'application/octet-stream',
+    };
+
     // Create request
     const init: RequestInit = {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/octet-stream',
-      },
+      headers,
       body,
     };
 
@@ -146,6 +150,36 @@ export function createWalrusClient(options: ClientOptions = {}) {
     // Parse and normalize response
     const responseData = await response.json() as StoreResponse;
     return normalizeBlobResponse(responseData);
+  };
+
+  /**
+   * Stores JSON data on the Walrus Publisher
+   * @param data JSON-serializable data to store
+   * @param options Storage options
+   * @returns Response with blob information
+   */
+  const storeJSON = async (data: unknown, options: StoreOptions = {}): Promise<StoreResponse> => {
+    try {
+      // Convert JSON to string
+      const jsonString = JSON.stringify(data);
+
+      // Convert string to Uint8Array using TextEncoder
+      const encoder = new TextEncoder();
+      const uint8Data = encoder.encode(jsonString);
+
+      // Use existing store method with content type set to application/json
+      const requestOptions: StoreOptions = {
+        ...options,
+        contentType: 'application/json'
+      };
+
+      return await store(uint8Data, requestOptions);
+    } catch (error) {
+      if (error instanceof Error) {
+        throw createWalrusError(`Failed to store JSON data: ${error.message}`, { cause: error });
+      }
+      throw createWalrusError('Failed to store JSON data: unknown error');
+    }
   };
 
   /**
@@ -232,8 +266,14 @@ export function createWalrusClient(options: ClientOptions = {}) {
     // Create a new Uint8Array with explicit typing to avoid ArrayBufferLike issues
     const data = new Uint8Array(new Uint8Array(fileData));
 
+    // Auto-detect content type from filename if not explicitly provided
+    const requestOptions: StoreOptions = {
+      ...options,
+      contentType: options.contentType || getContentTypeFromFilename(filePath)
+    };
+
     // Store the file content
-    return store(data, options);
+    return store(data, requestOptions);
   };
 
   /**
@@ -271,6 +311,31 @@ export function createWalrusClient(options: ClientOptions = {}) {
     }
 
     return data;
+  };
+
+  /**
+   * Retrieves JSON data from the Walrus Aggregator
+   * @param blobId Blob ID to retrieve
+   * @param options Read options
+   * @returns Retrieved and parsed JSON data
+   */
+  const readJSON = async <T = unknown>(blobId: string, options: ReadOptions = {}): Promise<T> => {
+    try {
+      // Read the binary data
+      const data = await read(blobId, options);
+
+      // Convert binary data to string
+      const decoder = new TextDecoder();
+      const jsonString = decoder.decode(data);
+
+      // Parse the JSON string
+      return JSON.parse(jsonString) as T;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw createWalrusError(`Failed to read JSON data: ${error.message}`, { cause: error });
+      }
+      throw createWalrusError('Failed to read JSON data: unknown error');
+    }
   };
 
   /**
@@ -374,10 +439,12 @@ export function createWalrusClient(options: ClientOptions = {}) {
   // Return the client interface
   return {
     store,
+    storeJSON,
     storeFromStream,
     storeFromURL,
     storeFile,
     read,
+    readJSON,
     readToFile,
     readToStream,
     head,

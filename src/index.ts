@@ -26,7 +26,8 @@ export type { WalrusError } from './types';
 export {
   validateUint8Array,
   validateAesKey,
-  combineURLs
+  combineURLs,
+  getContentTypeFromFilename
 } from './utils/helpers';
 
 // Export constants

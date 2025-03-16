@@ -86,4 +86,75 @@ export function combineURLs(baseURL: string, path: string): string {
   const normalizedBase = baseURL.endsWith('/') ? baseURL.slice(0, -1) : baseURL;
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
+}
+
+/**
+ * Gets content type based on file extension
+ * @param filename The filename or path to determine content type for
+ * @returns The MIME type for the file or 'application/octet-stream' if not determined
+ */
+export function getContentTypeFromFilename(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop() || '';
+
+  const contentTypes: Record<string, string> = {
+    // Text files
+    'txt': 'text/plain',
+    'html': 'text/html',
+    'htm': 'text/html',
+    'css': 'text/css',
+    'csv': 'text/csv',
+    'js': 'text/javascript',
+    'ts': 'text/typescript',
+    'md': 'text/markdown',
+
+    // Documents
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+
+    // Images
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'webp': 'image/webp',
+    'ico': 'image/x-icon',
+
+    // Audio
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg',
+
+    // Video
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'avi': 'video/x-msvideo',
+
+    // Data formats
+    'json': 'application/json',
+    'xml': 'application/xml',
+    'yaml': 'application/yaml',
+    'yml': 'application/yaml',
+
+    // Archives
+    'zip': 'application/zip',
+    'tar': 'application/x-tar',
+    'gz': 'application/gzip',
+    'rar': 'application/vnd.rar',
+    '7z': 'application/x-7z-compressed',
+
+    // Miscellaneous
+    'wasm': 'application/wasm',
+    'ttf': 'font/ttf',
+    'otf': 'font/otf',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+  };
+
+  return contentTypes[ext] || 'application/octet-stream';
 } 
