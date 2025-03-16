@@ -1,0 +1,44 @@
+{
+  "name": "walrus-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Walrus decentralized storage protocol",
+  "module": "src/index.ts",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target node",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "lint": "bunx @biomejs/biome check ./src",
+    "format": "bunx @biomejs/biome format --write ./src",
+    "example:basic": "bun run examples/basic-storage.ts",
+    "example:encrypted": "bun run examples/encrypted-storage.ts",
+    "example:file": "bun run examples/file-operations.ts",
+    "example:url": "bun run examples/url-operations.ts",
+    "example:client": "bun run examples/custom-client.ts",
+    "example:error": "bun run examples/error-handling.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "^1.2.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "files": [
+    "dist",
+    "src",
+    "examples"
+  ],
+  "keywords": [
+    "walrus",
+    "sui",
+    "storage",
+    "sdk",
+    "decentralized",
+    "bun"
+  ],
+  "author": "",
+  "license": "MIT"
+}
