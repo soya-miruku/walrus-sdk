@@ -1,4 +1,4 @@
-This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
 
 # File Summary
 
@@ -27,7 +27,6 @@ The content is organized as follows:
 ## Notes
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Files matching these patterns are excluded: **/*.md, **/*.mdc, **/*.txt
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 
@@ -35,6 +34,11 @@ The content is organized as follows:
 
 # Directory Structure
 ```
+docs/
+  api-reference.md
+  encryption.md
+  getting-started.md
+  README.md
 examples/
   basic-storage.ts
   custom-client.ts
@@ -42,6 +46,8 @@ examples/
   error-handling.ts
   file-operations.ts
   json-operations.ts
+  logging-example.ts
+  README.md
   url-operations.ts
 src/
   client/
@@ -58,19 +64,1068 @@ src/
   utils/
     constants.ts
     helpers.ts
+    logger.ts
   index.ts
 .gitignore
 biome.json
 bun.lock
 LICENSE
 package.json
+README.md
 tsconfig.json
 ```
 
 # Files
 
-## File: examples/basic-storage.ts
+## File: docs/api-reference.md
+````markdown
+# Walrus SDK API Reference
+
+This document provides a comprehensive reference for all public APIs of the Walrus SDK.
+
+## Table of Contents
+
+- [Client Creation](#client-creation)
+- [Storage Operations](#storage-operations)
+- [Retrieval Operations](#retrieval-operations)
+- [Metadata Operations](#metadata-operations)
+- [Types](#types)
+- [Errors](#errors)
+- [Constants](#constants)
+
+---
+
+## Client Creation
+
+### `createWalrusClient`
+
+Creates and initializes a new Walrus client.
+
 ```typescript
+function createWalrusClient(options?: WalrusClientOptions): WalrusClient
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `options` | `WalrusClientOptions` | (Optional) Configuration options for the client |
+
+#### Returns
+
+A new `WalrusClient` instance.
+
+#### Example
+
+```typescript
+import { createWalrusClient } from 'walrus-sdk';
+
+// With default options (testnet)
+const client = createWalrusClient();
+
+// With custom options
+const client = createWalrusClient({
+  aggregatorURLs: ['https://custom-aggregator.example.com'],
+  publisherURLs: ['https://custom-publisher.example.com'],
+  maxRetries: 3,
+  retryDelay: 1000, // ms
+});
+```
+
+### `WalrusClientOptions`
+
+```typescript
+interface WalrusClientOptions {
+  // Network configuration
+  aggregatorURLs?: string[];
+  publisherURLs?: string[];
+  
+  // Retry configuration
+  maxRetries?: number;
+  retryDelay?: number;
+  retryPolicy?: RetryPolicy;
+  
+  // Upload limits
+  maxUnknownLengthUploadSize?: number;
+}
+```
+
+---
+
+## Storage Operations
+
+### `store`
+
+Stores a byte array in the Walrus network.
+
+```typescript
+async store(data: Uint8Array, options: StoreOptions): Promise<StoreResponse>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `Uint8Array` | The data to store |
+| `options` | `StoreOptions` | Storage options |
+
+#### Returns
+
+A `Promise` that resolves to a `StoreResponse`.
+
+#### Example
+
+```typescript
+const data = new TextEncoder().encode('Hello, Walrus!');
+const response = await client.store(data, { epochs: 10 });
+```
+
+### `storeFromStream`
+
+Stores data from a ReadableStream in the Walrus network.
+
+```typescript
+async storeFromStream(
+  stream: ReadableStream<Uint8Array>, 
+  options: StoreOptions
+): Promise<StoreResponse>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `stream` | `ReadableStream<Uint8Array>` | The stream to read data from |
+| `options` | `StoreOptions` | Storage options |
+
+#### Returns
+
+A `Promise` that resolves to a `StoreResponse`.
+
+#### Example
+
+```typescript
+const response = await client.storeFromStream(dataStream, { 
+  epochs: 10,
+  contentType: 'application/octet-stream' 
+});
+```
+
+### `storeFromURL`
+
+Fetches data from a URL and stores it in the Walrus network.
+
+```typescript
+async storeFromURL(url: string, options: StoreOptions): Promise<StoreResponse>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `url` | `string` | The URL to fetch data from |
+| `options` | `StoreOptions` | Storage options |
+
+#### Returns
+
+A `Promise` that resolves to a `StoreResponse`.
+
+#### Example
+
+```typescript
+const response = await client.storeFromURL(
+  'https://example.com/image.jpg', 
+  { epochs: 10 }
+);
+```
+
+### `storeFile`
+
+Reads a file from the filesystem and stores it in the Walrus network.
+
+```typescript
+async storeFile(path: string, options: StoreOptions): Promise<StoreResponse>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | Path to the file to store |
+| `options` | `StoreOptions` | Storage options |
+
+#### Returns
+
+A `Promise` that resolves to a `StoreResponse`.
+
+#### Example
+
+```typescript
+const response = await client.storeFile('./document.pdf', { 
+  epochs: 10,
+  contentType: 'application/pdf' 
+});
+```
+
+---
+
+## Retrieval Operations
+
+### `read`
+
+Reads data from the Walrus network.
+
+```typescript
+async read(blobId: string, options?: ReadOptions): Promise<Uint8Array>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `blobId` | `string` | The ID of the blob to read |
+| `options` | `ReadOptions` | (Optional) Read options |
+
+#### Returns
+
+A `Promise` that resolves to a `Uint8Array` containing the blob data.
+
+#### Example
+
+```typescript
+const data = await client.read('bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi');
+```
+
+### `readToFile`
+
+Reads data from the Walrus network and writes it to a file.
+
+```typescript
+async readToFile(
+  blobId: string, 
+  path: string, 
+  options?: ReadOptions
+): Promise<void>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `blobId` | `string` | The ID of the blob to read |
+| `path` | `string` | Path where to save the file |
+| `options` | `ReadOptions` | (Optional) Read options |
+
+#### Returns
+
+A `Promise` that resolves when the file has been written.
+
+#### Example
+
+```typescript
+await client.readToFile(
+  'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
+  './downloaded-file.jpg'
+);
+```
+
+### `readToStream`
+
+Reads data from the Walrus network as a stream.
+
+```typescript
+async readToStream(
+  blobId: string, 
+  options?: ReadOptions
+): Promise<ReadableStream<Uint8Array>>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `blobId` | `string` | The ID of the blob to read |
+| `options` | `ReadOptions` | (Optional) Read options |
+
+#### Returns
+
+A `Promise` that resolves to a `ReadableStream<Uint8Array>`.
+
+#### Example
+
+```typescript
+const stream = await client.readToStream(
+  'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi'
+);
+// Process the stream...
+```
+
+---
+
+## Metadata Operations
+
+### `head`
+
+Gets metadata about a blob without downloading its contents.
+
+```typescript
+async head(blobId: string): Promise<HeadResponse>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `blobId` | `string` | The ID of the blob |
+
+#### Returns
+
+A `Promise` that resolves to a `HeadResponse`.
+
+#### Example
+
+```typescript
+const metadata = await client.head(
+  'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi'
+);
+console.log(`Content size: ${metadata.contentLength} bytes`);
+```
+
+### `getAPISpec`
+
+Gets the OpenAPI specification for the Walrus API.
+
+```typescript
+async getAPISpec(isAggregator: boolean = true): Promise<object>
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `isAggregator` | `boolean` | If true, gets the aggregator API spec; otherwise gets the publisher API spec |
+
+#### Returns
+
+A `Promise` that resolves to an object containing the OpenAPI specification.
+
+#### Example
+
+```typescript
+// Get the aggregator API spec
+const aggregatorSpec = await client.getAPISpec(true);
+
+// Get the publisher API spec
+const publisherSpec = await client.getAPISpec(false);
+```
+
+---
+
+## Types
+
+### StoreOptions
+
+```typescript
+interface StoreOptions {
+  // Required: Number of epochs to store data
+  epochs: number;
+  
+  // Optional: Content metadata
+  contentType?: string;
+  
+  // Optional: Encryption configuration
+  encryption?: EncryptionOptions;
+}
+```
+
+### ReadOptions
+
+```typescript
+interface ReadOptions {
+  // Optional: Encryption configuration (must match store options)
+  encryption?: EncryptionOptions;
+  
+  // Optional: Request cancellation
+  signal?: AbortSignal;
+}
+```
+
+### EncryptionOptions
+
+```typescript
+interface EncryptionOptions {
+  // Required: 32-byte encryption key
+  key: Uint8Array;
+  
+  // Required: Encryption algorithm
+  suite: CipherSuite;
+  
+  // Optional: Initialization vector for CBC mode
+  iv?: Uint8Array;
+}
+```
+
+### StoreResponse
+
+```typescript
+interface StoreResponse {
+  blob: {
+    blobId: string;      // Unique identifier
+    startEpoch: number;  // When storage begins
+    endEpoch: number;    // When storage expires
+  };
+  uploadUrl?: string;    // Direct upload URL (if applicable)
+}
+```
+
+### HeadResponse
+
+```typescript
+interface HeadResponse {
+  contentLength: number;  // Size in bytes
+  contentType: string;    // MIME type
+  startEpoch: number;     // When storage began
+  endEpoch: number;       // When storage expires
+  createdAt: string;      // ISO timestamp
+}
+```
+
+### CipherSuite
+
+```typescript
+enum CipherSuite {
+  AES256GCM = 'aes-256-gcm',
+  AES256CBC = 'aes-256-cbc'
+}
+```
+
+### RetryPolicy
+
+```typescript
+enum RetryPolicy {
+  FIXED_DELAY = 'fixed',
+  EXPONENTIAL_BACKOFF = 'exponential'
+}
+```
+
+---
+
+## Errors
+
+The SDK defines several error types for specific failure scenarios:
+
+### WalrusError
+
+Base error class for all Walrus SDK errors.
+
+```typescript
+class WalrusError extends Error {
+  code: string;
+  status?: number;
+}
+```
+
+### NetworkError
+
+Thrown when network requests fail.
+
+```typescript
+class NetworkError extends WalrusError {
+  // Additional network-specific information
+}
+```
+
+### ValidationError
+
+Thrown when validation fails for inputs.
+
+```typescript
+class ValidationError extends WalrusError {
+  // Details about which validation failed
+}
+```
+
+### AuthenticationError
+
+Thrown when authentication fails.
+
+```typescript
+class AuthenticationError extends WalrusError {
+  // Authentication failure details
+}
+```
+
+### NotFoundError
+
+Thrown when a blob is not found.
+
+```typescript
+class NotFoundError extends WalrusError {
+  // Contains the blobId that wasn't found
+}
+```
+
+### EncryptionError
+
+Thrown when encryption or decryption fails.
+
+```typescript
+class EncryptionError extends WalrusError {
+  // Contains details about the encryption failure
+}
+```
+
+---
+
+## Constants
+
+### DEFAULT_AGGREGATOR_URLS
+
+Default URLs for aggregator nodes.
+
+```typescript
+const DEFAULT_AGGREGATOR_URLS: string[]
+```
+
+### DEFAULT_PUBLISHER_URLS
+
+Default URLs for publisher nodes.
+
+```typescript
+const DEFAULT_PUBLISHER_URLS: string[]
+```
+
+### DEFAULT_MAX_RETRIES
+
+Default number of retry attempts.
+
+```typescript
+const DEFAULT_MAX_RETRIES: number // 3
+```
+
+### DEFAULT_RETRY_DELAY
+
+Default delay between retries in milliseconds.
+
+```typescript
+const DEFAULT_RETRY_DELAY: number // 1000
+```
+
+### DEFAULT_MAX_UNKNOWN_LENGTH_UPLOAD_SIZE
+
+Default maximum size for uploads with unknown length in bytes.
+
+```typescript
+const DEFAULT_MAX_UNKNOWN_LENGTH_UPLOAD_SIZE: number // 10 * 1024 * 1024 (10MB)
+```
+
+### DEFAULT_CIPHER_SUITE
+
+Default encryption cipher suite.
+
+```typescript
+const DEFAULT_CIPHER_SUITE: CipherSuite // CipherSuite.AES256GCM
+```
+````
+
+## File: docs/encryption.md
+````markdown
+# Encryption in Walrus SDK
+
+The Walrus SDK provides robust client-side encryption to ensure your data remains private while stored on the decentralized network. This document details the encryption capabilities and how to use them effectively.
+
+## Overview
+
+All encryption in Walrus SDK happens client-side, meaning:
+
+1. Your data is encrypted before leaving your application
+2. Only encrypted data is transmitted and stored on the network
+3. Encryption keys never leave your control
+4. Decryption happens in your application after retrieval
+
+This approach ensures that even if the network were compromised, your data remains secure as long as your encryption keys are safe.
+
+## Supported Encryption Suites
+
+The SDK supports two primary encryption methods:
+
+### 1. AES-256-GCM (Recommended)
+
+**Galois/Counter Mode (GCM)** provides both encryption and authentication, making it resistant to tampering.
+
+- **Strengths**: Provides authentication and integrity checking
+- **Performance**: Slightly more CPU-intensive than CBC but can be parallelized
+- **Security**: Very strong and recommended for most use cases
+
+### 2. AES-256-CBC
+
+**Cipher Block Chaining (CBC)** is a traditional block cipher mode.
+
+- **Strengths**: Widely supported, good performance
+- **Limitations**: No built-in authentication (data can be tampered with)
+- **Use Case**: When compatibility with other systems is required
+
+## Encryption Keys
+
+For both encryption methods, you'll need a 32-byte (256-bit) encryption key. You can:
+
+1. Generate a random key (recommended for new data)
+2. Derive a key from a password (when human-memorable keys are needed)
+3. Use an existing key (when you have a secure key management system)
+
+### Generating a Random Key
+
+```typescript
+// Generate a cryptographically secure random key
+const key = crypto.getRandomValues(new Uint8Array(32));
+
+// IMPORTANT: Store this key securely!
+// If you lose this key, you cannot decrypt your data
+```
+
+### Deriving a Key from a Password
+
+While not directly implemented in the SDK, you can use the Web Crypto API:
+
+```typescript
+async function deriveKeyFromPassword(password: string, salt: Uint8Array): Promise<Uint8Array> {
+  // Convert password to buffer
+  const passwordBuffer = new TextEncoder().encode(password);
+  
+  // Import key
+  const baseKey = await crypto.subtle.importKey(
+    'raw', 
+    passwordBuffer, 
+    { name: 'PBKDF2' }, 
+    false, 
+    ['deriveBits']
+  );
+  
+  // Derive key using PBKDF2
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: 100000, // Higher is more secure but slower
+      hash: 'SHA-256',
+    },
+    baseKey,
+    256 // 256 bits = 32 bytes
+  );
+  
+  return new Uint8Array(derivedBits);
+}
+
+// Example usage:
+const salt = crypto.getRandomValues(new Uint8Array(16)); // Save this salt!
+const key = await deriveKeyFromPassword('my-secure-password', salt);
+```
+
+## Basic Encryption Usage
+
+Here's how to use encryption with the Walrus SDK:
+
+```typescript
+import { createWalrusClient, CipherSuite } from 'walrus-sdk';
+
+async function encryptedStorageExample() {
+  // Create Walrus client
+  const client = createWalrusClient();
+  
+  // Your data
+  const data = new TextEncoder().encode('Confidential information');
+  
+  // Generate or load your encryption key (32 bytes)
+  const key = crypto.getRandomValues(new Uint8Array(32));
+  
+  try {
+    // Store with encryption
+    const response = await client.store(data, {
+      epochs: 10,
+      encryption: {
+        key,
+        suite: CipherSuite.AES256GCM
+      }
+    });
+    
+    console.log(`Encrypted data stored with ID: ${response.blob.blobId}`);
+    
+    // Later, retrieve and decrypt the data
+    const decrypted = await client.read(response.blob.blobId, {
+      encryption: {
+        key, // Must be the same key used for encryption
+        suite: CipherSuite.AES256GCM // Must use the same suite
+      }
+    });
+    
+    console.log(`Decrypted: ${new TextDecoder().decode(decrypted)}`);
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
+
+## Advanced Encryption Options
+
+### Using AES-CBC with Custom IV
+
+When using CBC mode, you can provide your own Initialization Vector (IV):
+
+```typescript
+// Generate a 16-byte IV
+const iv = crypto.getRandomValues(new Uint8Array(16));
+
+// Store with custom IV
+const response = await client.store(data, {
+  epochs: 10,
+  encryption: {
+    key,
+    suite: CipherSuite.AES256CBC,
+    iv // Custom IV
+  }
+});
+
+// When retrieving, you must provide the same IV
+const decrypted = await client.read(response.blob.blobId, {
+  encryption: {
+    key,
+    suite: CipherSuite.AES256CBC,
+    iv // Must be exactly the same as used for encryption
+  }
+});
+```
+
+### Encrypting Large Files
+
+For large files, the SDK automatically handles encryption in chunks when using streaming methods:
+
+```typescript
+import { createWalrusClient, CipherSuite } from 'walrus-sdk';
+
+async function encryptedFileExample() {
+  const client = createWalrusClient();
+  const key = crypto.getRandomValues(new Uint8Array(32));
+  
+  // Path to a file you want to encrypt and store
+  const filePath = './large-document.pdf';
+  
+  try {
+    // Store file with encryption
+    const response = await client.storeFile(filePath, {
+      epochs: 20,
+      contentType: 'application/pdf',
+      encryption: {
+        key,
+        suite: CipherSuite.AES256GCM
+      }
+    });
+    
+    console.log(`Encrypted file stored with ID: ${response.blob.blobId}`);
+    
+    // Download and decrypt to a new file
+    await client.readToFile(
+      response.blob.blobId, 
+      './decrypted-document.pdf', 
+      {
+        encryption: {
+          key,
+          suite: CipherSuite.AES256GCM
+        }
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+```
+
+## Security Best Practices
+
+1. **Key Management**: Securely store your encryption keys. If you lose them, you can't decrypt your data.
+
+2. **GCM vs CBC**: Prefer AES-256-GCM over AES-256-CBC whenever possible for the added authentication.
+
+3. **IV Handling**: If using CBC with a custom IV, never reuse the same IV with the same key.
+
+4. **Strong Keys**: Use cryptographically secure random keys or properly derived keys from strong passwords.
+
+5. **Metadata Protection**: Remember that while the data is encrypted, metadata about storage duration and blob size is not.
+
+## Implementation Details
+
+The encryption implementation in Walrus SDK uses the Web Crypto API for all cryptographic operations, ensuring:
+
+- Hardware acceleration when available
+- Standards-compliant implementations
+- Protection from common cryptographic mistakes
+
+The SDK automatically handles:
+- Proper padding for CBC mode
+- IV generation for GCM mode
+- Authentication tag validation for GCM mode
+- Streaming encryption for large files
+
+## FAQ
+
+**Q: Can I encrypt data with one key and decrypt with another?**
+A: No, you must use the exact same key for both operations.
+
+**Q: What happens if I lose my encryption key?**
+A: Your data will be permanently inaccessible. There is no way to recover encrypted data without the original key.
+
+**Q: Is the blob ID of encrypted data also encrypted?**
+A: No. The blob ID is a hash of the encrypted data, not the original data, but the ID itself is not encrypted.
+
+**Q: Can I change the encryption method when retrieving data?**
+A: No. You must use the same encryption suite (GCM or CBC) that was used to encrypt the data.
+
+---
+
+For more information about Walrus SDK and its features, please refer to the [main documentation](./project.md).
+````
+
+## File: docs/getting-started.md
+````markdown
+# Getting Started with Walrus SDK
+
+This guide will help you quickly get up and running with the Walrus SDK.
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) (recommended) or Node.js ≥ 16
+- Basic knowledge of TypeScript/JavaScript
+- A project where you want to implement decentralized storage
+
+## Installation
+
+Add the Walrus SDK to your project using your preferred package manager:
+
+```bash
+# Using Bun (recommended)
+bun add walrus-sdk
+
+# Using npm
+npm install walrus-sdk
+
+# Using yarn
+yarn add walrus-sdk
+
+# Using pnpm
+pnpm add walrus-sdk
+```
+
+## Basic Usage
+
+Here's a simple example to store and retrieve data:
+
+```typescript
+import { createWalrusClient } from 'walrus-sdk';
+
+async function basicExample() {
+  // Create a Walrus client with default settings
+  const client = createWalrusClient();
+  
+  // Example data to store
+  const data = new TextEncoder().encode('Hello, decentralized world!');
+  
+  try {
+    // Store data for 10 epochs (blockchain time periods)
+    const response = await client.store(data, { epochs: 10 });
+    
+    console.log('Storage successful!');
+    console.log(`Blob ID: ${response.blob.blobId}`);
+    console.log(`Available until epoch: ${response.blob.endEpoch}`);
+    
+    // Retrieve the stored data
+    const retrievedData = await client.read(response.blob.blobId);
+    
+    // Convert bytes back to text
+    const text = new TextDecoder().decode(retrievedData);
+    console.log(`Retrieved data: ${text}`);
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Run the example
+basicExample();
+```
+
+## Working with Files
+
+You can easily store and retrieve files from the filesystem:
+
+```typescript
+import { createWalrusClient } from 'walrus-sdk';
+import { join } from 'path';
+
+async function fileExample() {
+  const client = createWalrusClient();
+  
+  // Path to a file you want to store
+  const filePath = './example.jpg';
+  
+  try {
+    // Store the file for 20 epochs
+    const response = await client.storeFile(filePath, { 
+      epochs: 20,
+      contentType: 'image/jpeg' // Optional but recommended
+    });
+    
+    console.log(`File stored with blob ID: ${response.blob.blobId}`);
+    
+    // Download path
+    const downloadPath = './downloaded-example.jpg';
+    
+    // Download the file directly to disk
+    await client.readToFile(response.blob.blobId, downloadPath);
+    
+    console.log(`File downloaded to: ${downloadPath}`);
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Run the example
+fileExample();
+```
+
+## Working with Encryption
+
+For sensitive data, you can enable client-side encryption:
+
+```typescript
+import { createWalrusClient, CipherSuite } from 'walrus-sdk';
+
+async function encryptionExample() {
+  const client = createWalrusClient();
+  
+  // Data to encrypt and store
+  const data = new TextEncoder().encode('This is sensitive information');
+  
+  // Generate a 32-byte (256-bit) encryption key
+  // IMPORTANT: In production, you should securely store this key!
+  const key = crypto.getRandomValues(new Uint8Array(32));
+  
+  try {
+    // Store with encryption
+    const response = await client.store(data, {
+      epochs: 10,
+      encryption: {
+        key,
+        suite: CipherSuite.AES256GCM // Recommended for authentication
+      }
+    });
+    
+    console.log(`Encrypted data stored with blob ID: ${response.blob.blobId}`);
+    
+    // To decrypt, you must provide the same key and suite
+    const decrypted = await client.read(response.blob.blobId, {
+      encryption: {
+        key,
+        suite: CipherSuite.AES256GCM
+      }
+    });
+    
+    console.log(`Decrypted: ${new TextDecoder().decode(decrypted)}`);
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Run the example
+encryptionExample();
+```
+
+## Custom Configuration
+
+You can customize the client with various options:
+
+```typescript
+import { createWalrusClient, RetryPolicy } from 'walrus-sdk';
+
+// Create a client with custom configuration
+const client = createWalrusClient({
+  // Custom endpoints (for production use)
+  aggregatorURLs: ['https://your-aggregator.example.com'],
+  publisherURLs: ['https://your-publisher.example.com'],
+  
+  // Custom retry settings
+  maxRetries: 5,
+  retryDelay: 500, // ms
+  retryPolicy: RetryPolicy.EXPONENTIAL_BACKOFF,
+  
+  // Limits
+  maxUnknownLengthUploadSize: 50 * 1024 * 1024, // 50MB
+});
+```
+
+## Next Steps
+
+Now that you've got the basics, you might want to explore:
+
+- [Core Features](./core-features.md) - Detailed overview of all SDK capabilities
+- [API Reference](./api-reference.md) - Complete API documentation
+- [Examples](../examples/) - Full example scripts demonstrating various features
+
+For help or questions, please refer to the project's GitHub repository or the official Walrus documentation.
+````
+
+## File: docs/README.md
+````markdown
+# Walrus SDK Documentation
+
+Welcome to the Walrus SDK documentation. This directory contains comprehensive documentation for the Walrus SDK, a TypeScript library for interacting with the Walrus decentralized storage protocol on Sui.
+
+## Documentation Index
+
+### Core Documentation
+
+- [Project Overview](./project.md) - Complete overview of the SDK
+- [Getting Started](./getting-started.md) - Quick start guide
+- [API Reference](./api-reference.md) - Detailed API documentation
+- [Encryption Guide](./encryption.md) - Using encryption features
+
+### Example Code
+
+For working examples, see the [examples directory](../examples/) which includes:
+
+- Basic storage operations
+- Encrypted storage
+- File operations
+- URL operations
+- Custom client configuration
+- Error handling
+
+## Additional Resources
+
+- [Walrus Protocol Documentation](https://docs.walrus.site/)
+- [Sui Documentation](https://docs.sui.io/)
+
+## Support
+
+If you need help or have questions about the Walrus SDK, please:
+
+1. Check the documentation for answers
+2. Look at the examples for guidance
+3. File an issue in the GitHub repository
+
+## Contributing
+
+Contributions to the Walrus SDK are welcome! Please see the [Contributing Guide](./project.md#contributing) for details on how to get involved.
+
+## License
+
+The Walrus SDK is licensed under the MIT License. See the [LICENSE](../LICENSE) file for details.
+````
+
+## File: examples/basic-storage.ts
+````typescript
 /**
  * Basic Storage Example
  * 
@@ -117,10 +1172,10 @@ async function main() {
 if (import.meta.main) {
   main().catch(console.error);
 }
-```
+````
 
 ## File: examples/custom-client.ts
-```typescript
+````typescript
 /**
  * Custom Client Configuration Example
  * 
@@ -190,10 +1245,10 @@ async function main() {
 if (import.meta.main) {
   main().catch(console.error);
 }
-```
+````
 
 ## File: examples/encrypted-storage.ts
-```typescript
+````typescript
 /**
  * Encrypted Storage Example
  * 
@@ -291,10 +1346,10 @@ function bytesToHex(bytes: Uint8Array): string {
 if (import.meta.main) {
   main().catch(console.error);
 }
-```
+````
 
 ## File: examples/error-handling.ts
-```typescript
+````typescript
 /**
  * Error Handling Example
  * 
@@ -442,10 +1497,10 @@ async function main() {
 if (import.meta.main) {
   main().catch(console.error);
 }
-```
+````
 
 ## File: examples/file-operations.ts
-```typescript
+````typescript
 /**
  * File Operations Example
  * 
@@ -562,10 +1617,10 @@ async function main() {
 if (import.meta.main) {
   main().catch(console.error);
 }
-```
+````
 
 ## File: examples/json-operations.ts
-```typescript
+````typescript
 /**
  * JSON Operations Example
  * 
@@ -697,10 +1752,174 @@ function bytesToHex(bytes: Uint8Array): string {
 if (import.meta.main) {
   main().catch(console.error);
 }
+````
+
+## File: examples/logging-example.ts
+````typescript
+/**
+ * Logging Example
+ * 
+ * This example demonstrates how to use and configure the logger
+ * within the Walrus SDK.
+ */
+
+import { createWalrusClient, LogLevel, configureLogger } from "../src";
+
+// Define types for our data
+interface TestData {
+  name: string;
+  description: string;
+  features: string[];
+  timestamp: string;
+}
+
+interface LargeData {
+  items: Array<{
+    id: number;
+    value: string;
+    metadata: {
+      created: string;
+      tags: string[];
+    };
+  }>;
+}
+
+async function main() {
+  // Configure the global logger to show all debug messages and track timing
+  configureLogger({
+    level: LogLevel.DEBUG,
+    trackTiming: true,
+    // Only log performance timings that take more than 5ms
+    minTimingThreshold: 5,
+  });
+
+  console.log("Demonstrating logger configuration and performance tracking in Walrus SDK");
+
+  // Create a client with custom logger settings (these take precedence over the global config)
+  const client = createWalrusClient({
+    logger: {
+      // Only show warning and error messages
+      level: LogLevel.WARN,
+      // Customize the console format
+      consoleFormat: "simple",
+      // Still track timing
+      trackTiming: true,
+      // Higher threshold for timing logs to reduce noise
+      minTimingThreshold: 100,
+    },
+  });
+
+  try {
+    // Create some JSON data to store
+    const jsonData: TestData = {
+      name: "Walrus Protocol",
+      description: "Decentralized storage with performance tracking",
+      features: ["Fast", "Secure", "Decentralized", "Performance Monitoring"],
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("\nStoring JSON data to measure performance...");
+
+    // Store some data - timing will be tracked automatically
+    const storeResponse = await client.storeJSON(jsonData, { epochs: 5 });
+    const blobId = storeResponse.blob.blobId;
+
+    console.log(`Data stored with blob ID: ${blobId}`);
+
+    // Get metadata - timing will be tracked
+    const metadata = await client.head(blobId);
+    console.log(`Content length: ${metadata.contentLength} bytes`);
+
+    // Read back the data - timing will be tracked
+    console.log("\nRetrieving data to measure read performance...");
+    const retrievedData = await client.readJSON<TestData>(blobId);
+    console.log(`Data retrieved successfully: ${retrievedData.name}`);
+
+    // Demonstrate a large operation to see performance timing
+    console.log("\nPerforming a larger operation to demonstrate timing thresholds...");
+    // Create a large array
+    const largeData: LargeData = {
+      items: Array.from({ length: 10000 }, (_, i) => ({
+        id: i,
+        value: `Item ${i}`,
+        metadata: {
+          created: new Date().toISOString(),
+          tags: ["test", "performance", `tag${i % 10}`],
+        },
+      })),
+    };
+
+    // Store and retrieve the large data
+    const largeResponse = await client.storeJSON(largeData, { epochs: 5 });
+    console.log(`Large data stored with blob ID: ${largeResponse.blob.blobId}`);
+
+    // This operation should definitely cross the timing threshold
+    const largeRetrieved = await client.readJSON<LargeData>(largeResponse.blob.blobId);
+    console.log(`Large data retrieved, contains ${largeRetrieved.items.length} items`);
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+// Only run if this file is being executed directly
+if (import.meta.main) {
+  main().catch(console.error);
+}
+````
+
+## File: examples/README.md
+````markdown
+# Walrus SDK Examples
+
+This directory contains a collection of example scripts that demonstrate how to use the Walrus SDK.
+
+## Running the Examples
+
+You can run these examples using Bun:
+
+```bash
+# From the root of the project
+bun run examples/basic-storage.ts
 ```
 
+## Example Descriptions
+
+### Basic Usage
+
+- **[basic-storage.ts](./basic-storage.ts)**: Demonstrates basic data storage and retrieval operations.
+- **[encrypted-storage.ts](./encrypted-storage.ts)**: Shows how to encrypt and decrypt data with both GCM and CBC modes.
+- **[file-operations.ts](./file-operations.ts)**: Examples of working with files and streams.
+- **[url-operations.ts](./url-operations.ts)**: Demonstrates storing content from remote URLs.
+
+### Advanced Usage
+
+- **[custom-client.ts](./custom-client.ts)**: Shows how to configure the Walrus client with custom options.
+- **[error-handling.ts](./error-handling.ts)**: Examples of proper error handling techniques.
+
+## Prerequisites
+
+Make sure you have Bun installed and have set up the SDK properly. These examples assume you're running against the Walrus testnet, which has rate limits. For production applications, you should use dedicated endpoints.
+
+## Note on Encryption
+
+When using encryption, make sure to securely store your encryption keys. The examples generate random keys for demonstration purposes, but in a real application, you should implement proper key management.
+
+## Additional Features (Coming Soon)
+
+In future updates, we plan to add examples for:
+
+- Sui blockchain integration for verification
+- WAL token operations
+- Walrus Sites deployment
+
+## Need Help?
+
+If you encounter any issues or have questions, please open an issue in the GitHub repository.
+````
+
 ## File: examples/url-operations.ts
-```typescript
+````typescript
 /**
  * URL Operations Example
  * 
@@ -794,10 +2013,10 @@ function getExtensionFromContentType(contentType: string): string {
 if (import.meta.main) {
   main().catch(console.error);
 }
-```
+````
 
 ## File: src/client/walrus-client.ts
-```typescript
+````typescript
 import type {
   ClientOptions,
   StoreOptions,
@@ -821,6 +2040,7 @@ import {
 import { createCipher } from '../encryption';
 import type { CipherOptions } from '../encryption';
 import { CipherSuite, createWalrusError } from '../types';
+import logger, { configureLogger } from '../utils/logger';
 
 /**
  * Creates a client for interacting with the Walrus API
@@ -828,6 +2048,11 @@ import { CipherSuite, createWalrusError } from '../types';
  * @returns Walrus client with methods for storing and retrieving data
  */
 export function createWalrusClient(options: ClientOptions = {}) {
+  // Configure logger if options provided
+  if (options.logger) {
+    configureLogger(options.logger);
+  }
+
   // Initialize configuration with defaults
   const aggregatorURLs = options.aggregatorURLs || DEFAULT_TESTNET_AGGREGATORS;
   const publisherURLs = options.publisherURLs || DEFAULT_TESTNET_PUBLISHERS;
@@ -836,6 +2061,13 @@ export function createWalrusClient(options: ClientOptions = {}) {
   const maxUnknownLengthUploadSize = options.maxUnknownLengthUploadSize ||
     DEFAULT_CONFIG.MAX_UNKNOWN_LENGTH_UPLOAD_SIZE;
   const fetchImpl = options.fetch || fetch;
+
+  logger.info('Creating Walrus client', {
+    aggregatorCount: aggregatorURLs.length,
+    publisherCount: publisherURLs.length,
+    maxRetries,
+    retryDelay
+  });
 
   /**
    * Converts EncryptionOptions to CipherOptions
@@ -856,58 +2088,85 @@ export function createWalrusClient(options: ClientOptions = {}) {
     init: RequestInit,
     baseURLs: string[]
   ): Promise<Response> => {
-    // Calculate total attempts based on retry config and URL count
-    const totalAttempts = maxRetries + 1;
-    let lastError: Error | null = null;
+    return logger.timeAsync('doWithRetry', async () => {
+      // Calculate total attempts based on retry config and URL count
+      const totalAttempts = maxRetries + 1;
+      let lastError: Error | null = null;
 
-    // Try URLs in round-robin fashion until max retries reached
-    for (let attempt = 0; attempt < totalAttempts; attempt++) {
-      // Get URL index for this attempt
-      const urlIndex = attempt % baseURLs.length;
-      const baseURL = baseURLs[urlIndex];
-      // Ensure baseURL is not undefined
-      if (!baseURL) {
-        lastError = new Error('No valid base URLs provided');
-        continue;
-      }
-
-      const fullURL = combineURLs(baseURL, url);
-
-      try {
-        // Clone the init object to avoid issues with body already being used
-        const requestInit = { ...init };
-        if (init.body && init.body instanceof Uint8Array) {
-          requestInit.body = init.body.slice(0);
+      // Try URLs in round-robin fashion until max retries reached
+      for (let attempt = 0; attempt < totalAttempts; attempt++) {
+        // Get URL index for this attempt
+        const urlIndex = attempt % baseURLs.length;
+        const baseURL = baseURLs[urlIndex];
+        // Ensure baseURL is not undefined
+        if (!baseURL) {
+          lastError = new Error('No valid base URLs provided');
+          logger.warn('No valid base URL found', { attempt, urlIndex });
+          continue;
         }
 
-        // Make the request
-        const response = await fetchImpl(fullURL, requestInit);
+        const fullURL = combineURLs(baseURL, url);
+        logger.debug('Attempting request', {
+          attempt: attempt + 1,
+          totalAttempts,
+          url: fullURL,
+          method: init.method
+        });
 
-        // Check for success (2xx status code)
-        if (response.ok) {
-          return response;
+        try {
+          // Clone the init object to avoid issues with body already being used
+          const requestInit = { ...init };
+          if (init.body && init.body instanceof Uint8Array) {
+            requestInit.body = init.body.slice(0);
+          }
+
+          // Make the request
+          const response = await fetchImpl(fullURL, requestInit);
+
+          // Check for success (2xx status code)
+          if (response.ok) {
+            logger.debug('Request successful', {
+              statusCode: response.status,
+              url: fullURL
+            });
+            return response;
+          }
+
+          // Handle error response
+          const errorMessage = await parseErrorResponse(response);
+          lastError = new Error(
+            `Request failed with status code ${response.status}: ${errorMessage}`
+          );
+          logger.warn('Request failed', {
+            statusCode: response.status,
+            message: errorMessage,
+            url: fullURL,
+            attempt: attempt + 1
+          });
+        } catch (error) {
+          // Handle network or other errors
+          lastError = error instanceof Error
+            ? error
+            : new Error('Unknown error occurred');
+
+          logger.warn('Network error', {
+            error: lastError.message,
+            url: fullURL,
+            attempt: attempt + 1
+          });
         }
 
-        // Handle error response
-        const errorMessage = await parseErrorResponse(response);
-        lastError = new Error(
-          `Request failed with status code ${response.status}: ${errorMessage}`
-        );
-      } catch (error) {
-        // Handle network or other errors
-        lastError = error instanceof Error
-          ? error
-          : new Error('Unknown error occurred');
+        // Sleep before next attempt if not the last attempt
+        if (attempt < totalAttempts - 1) {
+          logger.debug('Retrying after delay', { delayMs: retryDelay });
+          await sleep(retryDelay);
+        }
       }
 
-      // Sleep before next attempt if not the last attempt
-      if (attempt < totalAttempts - 1) {
-        await sleep(retryDelay);
-      }
-    }
-
-    // All retries failed
-    throw new Error(`All retry attempts failed: ${lastError?.message || 'Unknown error'}`);
+      // All retries failed
+      logger.error('All retry attempts failed', { error: lastError?.message || 'Unknown error' });
+      throw new Error(`All retry attempts failed: ${lastError?.message || 'Unknown error'}`);
+    }, { url, method: init.method });
   };
 
   /**
@@ -917,39 +2176,56 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Response with blob information
    */
   const store = async (data: Uint8Array, options: StoreOptions = {}): Promise<StoreResponse> => {
-    let body = data;
+    return logger.timeAsync('store', async () => {
+      let body = data;
+      logger.info('Storing data', {
+        size: data.byteLength,
+        epochs: options.epochs,
+        contentType: options.contentType,
+        hasEncryption: !!options.encryption
+      });
 
-    // Handle encryption if enabled
-    if (options.encryption) {
-      const cipherOptions = toCipherOptions(options.encryption);
-      const cipher = createCipher(cipherOptions);
-      body = await cipher.encrypt(data);
-    }
+      // Handle encryption if enabled
+      if (options.encryption) {
+        const cipherOptions = toCipherOptions(options.encryption);
+        const cipher = createCipher(cipherOptions);
+        logger.debug('Encrypting data', { suite: cipherOptions.suite });
+        body = await logger.timeAsync('encrypt', () => cipher.encrypt(data));
+        logger.debug('Data encrypted', { originalSize: data.byteLength, encryptedSize: body.byteLength });
+      }
 
-    // Create URL with epoch parameter if specified
-    let url = '/v1/blobs';
-    if (options.epochs && options.epochs > 0) {
-      url += `?epochs=${options.epochs}`;
-    }
+      // Create URL with epoch parameter if specified
+      let url = '/v1/blobs';
+      if (options.epochs && options.epochs > 0) {
+        url += `?epochs=${options.epochs}`;
+      }
 
-    // Set up headers with content type if specified
-    const headers: Record<string, string> = {
-      'Content-Type': options.contentType || 'application/octet-stream',
-    };
+      // Set up headers with content type if specified
+      const headers: Record<string, string> = {
+        'Content-Type': options.contentType || 'application/octet-stream',
+      };
 
-    // Create request
-    const init: RequestInit = {
-      method: 'PUT',
-      headers,
-      body,
-    };
+      // Create request
+      const init: RequestInit = {
+        method: 'PUT',
+        headers,
+        body,
+      };
 
-    // Send request with retry logic
-    const response = await doWithRetry(url, init, publisherURLs);
+      // Send request with retry logic
+      const response = await doWithRetry(url, init, publisherURLs);
 
-    // Parse and normalize response
-    const responseData = await response.json() as StoreResponse;
-    return normalizeBlobResponse(responseData);
+      // Parse and normalize response
+      const responseData = await response.json() as StoreResponse;
+      const normalizedResponse = normalizeBlobResponse(responseData);
+      logger.info('Data stored successfully', {
+        blobId: normalizedResponse.blob.blobId,
+        endEpoch: normalizedResponse.blob.endEpoch,
+        isNewlyCreated: !!normalizedResponse.newlyCreated
+      });
+
+      return normalizedResponse;
+    }, { dataSize: data.byteLength });
   };
 
   /**
@@ -959,27 +2235,32 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Response with blob information
    */
   const storeJSON = async (data: unknown, options: StoreOptions = {}): Promise<StoreResponse> => {
-    try {
-      // Convert JSON to string
-      const jsonString = JSON.stringify(data);
+    return logger.timeAsync('storeJSON', async () => {
+      try {
+        // Convert JSON to string
+        const jsonString = JSON.stringify(data);
+        logger.debug('JSON serialized', { stringLength: jsonString.length });
 
-      // Convert string to Uint8Array using TextEncoder
-      const encoder = new TextEncoder();
-      const uint8Data = encoder.encode(jsonString);
+        // Convert string to Uint8Array using TextEncoder
+        const encoder = new TextEncoder();
+        const uint8Data = encoder.encode(jsonString);
 
-      // Use existing store method with content type set to application/json
-      const requestOptions: StoreOptions = {
-        ...options,
-        contentType: 'application/json'
-      };
+        // Use existing store method with content type set to application/json
+        const requestOptions: StoreOptions = {
+          ...options,
+          contentType: 'application/json'
+        };
 
-      return await store(uint8Data, requestOptions);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw createWalrusError(`Failed to store JSON data: ${error.message}`, { cause: error });
+        return await store(uint8Data, requestOptions);
+      } catch (error) {
+        if (error instanceof Error) {
+          logger.error('Failed to store JSON data', { error: error.message });
+          throw createWalrusError(`Failed to store JSON data: ${error.message}`, { cause: error });
+        }
+        logger.error('Failed to store JSON data with unknown error');
+        throw createWalrusError('Failed to store JSON data: unknown error');
       }
-      throw createWalrusError('Failed to store JSON data: unknown error');
-    }
+    });
   };
 
   /**
@@ -992,42 +2273,54 @@ export function createWalrusClient(options: ClientOptions = {}) {
     stream: ReadableStream<Uint8Array>,
     options: StoreOptions = {}
   ): Promise<StoreResponse> => {
-    // Read all data from the stream first
-    const chunks: Uint8Array[] = [];
-    const reader = stream.getReader();
-    let totalLength = 0;
+    return logger.timeAsync('storeFromStream', async () => {
+      logger.info('Storing data from stream');
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // Read all data from the stream first
+      const chunks: Uint8Array[] = [];
+      const reader = stream.getReader();
+      let totalLength = 0;
 
-        chunks.push(value);
-        totalLength += value.byteLength;
+      logger.debug('Reading stream chunks');
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        // Check size limit to prevent memory issues
-        if (totalLength > maxUnknownLengthUploadSize) {
-          throw new Error(
-            `Stream size exceeds maximum allowed (${maxUnknownLengthUploadSize} bytes). ` +
-            `Use a file or buffer with known size instead.`
-          );
+          chunks.push(value);
+          totalLength += value.byteLength;
+          logger.debug('Read stream chunk', { chunkSize: value.byteLength, totalLength });
+
+          // Check size limit to prevent memory issues
+          if (totalLength > maxUnknownLengthUploadSize) {
+            logger.error('Stream size exceeded maximum allowed', {
+              totalLength,
+              maxSize: maxUnknownLengthUploadSize
+            });
+            throw new Error(
+              `Stream size exceeds maximum allowed (${maxUnknownLengthUploadSize} bytes). ` +
+              `Use a file or buffer with known size instead.`
+            );
+          }
         }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
-    }
 
-    // Combine chunks into a single Uint8Array
-    const data = new Uint8Array(totalLength);
-    let offset = 0;
+      // Combine chunks into a single Uint8Array
+      logger.debug('Combining stream chunks', { chunkCount: chunks.length, totalLength });
+      const data = new Uint8Array(totalLength);
+      let offset = 0;
 
-    for (const chunk of chunks) {
-      data.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
+      for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
 
-    // Store the combined data
-    return store(data, options);
+      // Store the combined data
+      logger.info('Stream fully read, storing data', { size: data.byteLength });
+      return store(data, options);
+    });
   };
 
   /**
@@ -1037,19 +2330,26 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Response with blob information
    */
   const storeFromURL = async (url: string, options: StoreOptions = {}): Promise<StoreResponse> => {
-    // Download content from URL
-    const response = await fetchImpl(url);
+    return logger.timeAsync('storeFromURL', async () => {
+      logger.info('Downloading and storing content from URL', { url });
 
-    if (!response.ok) {
-      throw new Error(`Failed to download from URL ${url}: HTTP status ${response.status}`);
-    }
+      // Download content from URL
+      logger.debug('Fetching URL content', { url });
+      const response = await fetchImpl(url);
 
-    // Get content as array buffer and create a properly typed Uint8Array
-    const arrayBuffer = await response.arrayBuffer();
-    const data = new Uint8Array(new Uint8Array(arrayBuffer));
+      if (!response.ok) {
+        logger.error('Failed to download from URL', { url, statusCode: response.status });
+        throw new Error(`Failed to download from URL ${url}: HTTP status ${response.status}`);
+      }
 
-    // Store the downloaded content
-    return store(data, options);
+      // Get content as array buffer and create a properly typed Uint8Array
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(new Uint8Array(arrayBuffer));
+      logger.debug('URL content downloaded', { size: data.byteLength });
+
+      // Store the downloaded content
+      return store(data, options);
+    }, { url });
   };
 
   /**
@@ -1059,21 +2359,33 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Response with blob information
    */
   const storeFile = async (filePath: string, options: StoreOptions = {}): Promise<StoreResponse> => {
-    // Read file content directly into a binary buffer
-    const file = Bun.file(filePath);
-    const fileData = await file.arrayBuffer();
+    return logger.timeAsync('storeFile', async () => {
+      logger.info('Storing file', { filePath });
 
-    // Create a new Uint8Array with explicit typing to avoid ArrayBufferLike issues
-    const data = new Uint8Array(new Uint8Array(fileData));
+      // Read file content directly into a binary buffer
+      const file = Bun.file(filePath);
+      logger.debug('Reading file', { filePath, size: file.size });
+      const fileData = await file.arrayBuffer();
 
-    // Auto-detect content type from filename if not explicitly provided
-    const requestOptions: StoreOptions = {
-      ...options,
-      contentType: options.contentType || getContentTypeFromFilename(filePath)
-    };
+      // Create a new Uint8Array with explicit typing to avoid ArrayBufferLike issues
+      const data = new Uint8Array(new Uint8Array(fileData));
+      logger.debug('File read successfully', { size: data.byteLength });
 
-    // Store the file content
-    return store(data, requestOptions);
+      // Auto-detect content type from filename if not explicitly provided
+      const detectedContentType = getContentTypeFromFilename(filePath);
+      const requestOptions: StoreOptions = {
+        ...options,
+        contentType: options.contentType || detectedContentType
+      };
+
+      logger.debug('Detected content type', {
+        filePath,
+        contentType: requestOptions.contentType
+      });
+
+      // Store the file content
+      return store(data, requestOptions);
+    }, { filePath });
   };
 
   /**
@@ -1083,34 +2395,47 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Retrieved data
    */
   const read = async (blobId: string, options: ReadOptions = {}): Promise<Uint8Array> => {
-    // Create URL with blob ID
-    const url = `/v1/blobs/${encodeURIComponent(blobId)}`;
+    return logger.timeAsync('read', async () => {
+      logger.info('Reading blob', { blobId, hasDecryption: !!options.encryption });
 
-    // Create request
-    const init: RequestInit = {
-      method: 'GET',
-    };
+      // Create URL with blob ID
+      const url = `/v1/blobs/${encodeURIComponent(blobId)}`;
 
-    // Send request with retry logic
-    const response = await doWithRetry(url, init, aggregatorURLs);
+      // Create request
+      const init: RequestInit = {
+        method: 'GET',
+      };
 
-    // Get response as array buffer and create a properly typed Uint8Array
-    const arrayBuffer = await response.arrayBuffer();
-    const data = new Uint8Array(new Uint8Array(arrayBuffer));
+      // Send request with retry logic
+      const response = await doWithRetry(url, init, aggregatorURLs);
 
-    // Handle decryption if enabled
-    if (options.encryption) {
-      const cipherOptions = toCipherOptions(options.encryption);
-      const cipher = createCipher(cipherOptions);
-      const decryptedData = await cipher.decrypt(data);
+      // Get response as array buffer and create a properly typed Uint8Array
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(new Uint8Array(arrayBuffer));
+      logger.debug('Blob data retrieved', { size: data.byteLength, blobId });
 
-      // Create a new Uint8Array to ensure correct typing
-      const result = new Uint8Array(decryptedData.byteLength);
-      result.set(decryptedData);
-      return result;
-    }
+      // Handle decryption if enabled
+      if (options.encryption) {
+        const cipherOptions = toCipherOptions(options.encryption);
+        const cipher = createCipher(cipherOptions);
+        logger.debug('Decrypting data', { suite: cipherOptions.suite });
 
-    return data;
+        const decryptedData = await logger.timeAsync('decrypt', () => cipher.decrypt(data));
+
+        // Create a new Uint8Array to ensure correct typing
+        const result = new Uint8Array(decryptedData.byteLength);
+        result.set(decryptedData);
+
+        logger.debug('Data decrypted', {
+          originalSize: data.byteLength,
+          decryptedSize: result.byteLength
+        });
+
+        return result;
+      }
+
+      return data;
+    }, { blobId });
   };
 
   /**
@@ -1120,22 +2445,32 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Retrieved and parsed JSON data
    */
   const readJSON = async <T = unknown>(blobId: string, options: ReadOptions = {}): Promise<T> => {
-    try {
-      // Read the binary data
-      const data = await read(blobId, options);
+    return logger.timeAsync('readJSON', async () => {
+      try {
+        logger.info('Reading and parsing JSON blob', { blobId });
 
-      // Convert binary data to string
-      const decoder = new TextDecoder();
-      const jsonString = decoder.decode(data);
+        // Read the binary data
+        const data = await read(blobId, options);
 
-      // Parse the JSON string
-      return JSON.parse(jsonString) as T;
-    } catch (error) {
-      if (error instanceof Error) {
-        throw createWalrusError(`Failed to read JSON data: ${error.message}`, { cause: error });
+        // Convert binary data to string
+        const decoder = new TextDecoder();
+        const jsonString = decoder.decode(data);
+        logger.debug('JSON string decoded', { stringLength: jsonString.length });
+
+        // Parse the JSON string
+        const result = JSON.parse(jsonString) as T;
+        logger.debug('JSON parsed successfully', { blobId });
+
+        return result;
+      } catch (error) {
+        if (error instanceof Error) {
+          logger.error('Failed to read JSON data', { error: error.message, blobId });
+          throw createWalrusError(`Failed to read JSON data: ${error.message}`, { cause: error });
+        }
+        logger.error('Failed to read JSON data with unknown error', { blobId });
+        throw createWalrusError('Failed to read JSON data: unknown error');
       }
-      throw createWalrusError('Failed to read JSON data: unknown error');
-    }
+    }, { blobId });
   };
 
   /**
@@ -1145,11 +2480,17 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @param options Read options
    */
   const readToFile = async (blobId: string, filePath: string, options: ReadOptions = {}): Promise<void> => {
-    // Read blob data
-    const data = await read(blobId, options);
+    return logger.timeAsync('readToFile', async () => {
+      logger.info('Reading blob and saving to file', { blobId, filePath });
 
-    // Write data to file
-    await Bun.write(filePath, data);
+      // Read blob data
+      const data = await read(blobId, options);
+      logger.debug('Writing data to file', { filePath, size: data.byteLength });
+
+      // Write data to file
+      await Bun.write(filePath, data);
+      logger.info('File saved successfully', { filePath, size: data.byteLength });
+    }, { blobId, filePath });
   };
 
   /**
@@ -1159,29 +2500,39 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Readable stream of blob data
    */
   const readToStream = async (blobId: string, options: ReadOptions = {}): Promise<ReadableStream<Uint8Array>> => {
-    // If encryption is enabled, we need to read the entire blob and decrypt it first
-    if (options.encryption) {
-      const data = await read(blobId, options);
+    return logger.timeAsync('readToStream', async () => {
+      logger.info('Reading blob to stream', { blobId, hasDecryption: !!options.encryption });
 
-      // Convert the decrypted data to a stream
-      return new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(data);
-          controller.close();
-        }
-      });
-    }
+      // If encryption is enabled, we need to read the entire blob and decrypt it first
+      if (options.encryption) {
+        logger.debug('Encryption enabled, reading entire blob for decryption');
+        const data = await read(blobId, options);
 
-    // Without encryption, we can stream directly from the API
-    const url = `/v1/blobs/${encodeURIComponent(blobId)}`;
-    const init: RequestInit = { method: 'GET' };
+        // Convert the decrypted data to a stream
+        logger.debug('Creating stream from decrypted data', { size: data.byteLength });
+        return new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(data);
+            controller.close();
+          }
+        });
+      }
 
-    const response = await doWithRetry(url, init, aggregatorURLs);
-    // Ensure body is not null before returning
-    if (!response.body) {
-      throw new Error('Response body is null or undefined');
-    }
-    return response.body;
+      // Without encryption, we can stream directly from the API
+      logger.debug('Creating direct stream from API', { blobId });
+      const url = `/v1/blobs/${encodeURIComponent(blobId)}`;
+      const init: RequestInit = { method: 'GET' };
+
+      const response = await doWithRetry(url, init, aggregatorURLs);
+      // Ensure body is not null before returning
+      if (!response.body) {
+        logger.error('Response body is null or undefined', { blobId });
+        throw new Error('Response body is null or undefined');
+      }
+
+      logger.debug('Stream created successfully', { blobId });
+      return response.body;
+    }, { blobId });
   };
 
   /**
@@ -1190,24 +2541,31 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns Blob metadata
    */
   const head = async (blobId: string): Promise<BlobMetadata> => {
-    // Create URL with blob ID
-    const url = `/v1/blobs/${encodeURIComponent(blobId)}`;
+    return logger.timeAsync('head', async () => {
+      logger.info('Retrieving blob metadata', { blobId });
 
-    // Create request
-    const init: RequestInit = {
-      method: 'HEAD',
-    };
+      // Create URL with blob ID
+      const url = `/v1/blobs/${encodeURIComponent(blobId)}`;
 
-    // Send request with retry logic
-    const response = await doWithRetry(url, init, aggregatorURLs);
+      // Create request
+      const init: RequestInit = {
+        method: 'HEAD',
+      };
 
-    // Extract metadata from response headers
-    return {
-      contentLength: parseInt(response.headers.get('content-length') || '0', 10),
-      contentType: response.headers.get('content-type') || '',
-      lastModified: response.headers.get('last-modified') || '',
-      etag: response.headers.get('etag') || '',
-    };
+      // Send request with retry logic
+      const response = await doWithRetry(url, init, aggregatorURLs);
+
+      // Extract metadata from response headers
+      const metadata = {
+        contentLength: parseInt(response.headers.get('content-length') || '0', 10),
+        contentType: response.headers.get('content-type') || '',
+        lastModified: response.headers.get('last-modified') || '',
+        etag: response.headers.get('etag') || '',
+      };
+
+      logger.debug('Blob metadata retrieved', metadata);
+      return metadata;
+    }, { blobId });
   };
 
   /**
@@ -1216,24 +2574,36 @@ export function createWalrusClient(options: ClientOptions = {}) {
    * @returns API specification data
    */
   const getAPISpec = async (isAggregator: boolean): Promise<Uint8Array> => {
-    // Create URL
-    const url = '/v1/api';
+    return logger.timeAsync('getAPISpec', async () => {
+      const source = isAggregator ? 'aggregator' : 'publisher';
+      logger.info(`Retrieving API specification from ${source}`);
 
-    // Create request
-    const init: RequestInit = {
-      method: 'GET',
-    };
+      // Create URL
+      const url = '/v1/api';
 
-    // Send request with retry logic
-    const response = await doWithRetry(
-      url,
-      init,
-      isAggregator ? aggregatorURLs : publisherURLs
-    );
+      // Create request
+      const init: RequestInit = {
+        method: 'GET',
+      };
 
-    // Get response as array buffer and create a properly typed Uint8Array
-    const arrayBuffer = await response.arrayBuffer();
-    return new Uint8Array(new Uint8Array(arrayBuffer));
+      // Send request with retry logic
+      const response = await doWithRetry(
+        url,
+        init,
+        isAggregator ? aggregatorURLs : publisherURLs
+      );
+
+      // Get response as array buffer and create a properly typed Uint8Array
+      const arrayBuffer = await response.arrayBuffer();
+      const data = new Uint8Array(new Uint8Array(arrayBuffer));
+
+      logger.debug('API specification retrieved', {
+        source,
+        size: data.byteLength
+      });
+
+      return data;
+    }, { source: isAggregator ? 'aggregator' : 'publisher' });
   };
 
   // Return the client interface
@@ -1254,10 +2624,10 @@ export function createWalrusClient(options: ClientOptions = {}) {
 
 // For backward compatibility and types
 export type WalrusClient = ReturnType<typeof createWalrusClient>;
-```
+````
 
 ## File: src/encryption/cbc.ts
-```typescript
+````typescript
 import type { ContentCipher, CipherOptions } from './interfaces';
 import { validateAesKey, validateUint8Array } from '../utils/helpers';
 import { createWalrusError } from '../types';
@@ -1518,10 +2888,10 @@ export function createCBCCipher(options: CipherOptions): ContentCipher {
     decryptStream
   };
 }
-```
+````
 
 ## File: src/encryption/gcm.ts
-```typescript
+````typescript
 import type { ContentCipher } from './interfaces';
 import { validateAesKey } from '../utils/helpers';
 import { createWalrusError } from '../types';
@@ -1735,10 +3105,10 @@ export function createGCMCipher(keyData: Uint8Array): ContentCipher {
     decryptStream
   };
 }
-```
+````
 
 ## File: src/encryption/index.ts
-```typescript
+````typescript
 import type { ContentCipher, CipherOptions } from './interfaces';
 import { createGCMCipher } from './gcm';
 import { createCBCCipher } from './cbc';
@@ -1774,10 +3144,10 @@ export function createCipher(options: CipherOptions): ContentCipher {
 // Re-export types
 export type { ContentCipher, CipherOptions } from './interfaces';
 export { CipherSuite } from '../types';
-```
+````
 
 ## File: src/encryption/interfaces.ts
-```typescript
+````typescript
 import type { CipherSuite } from '../types';
 
 /**
@@ -1834,10 +3204,10 @@ export interface CipherOptions {
    */
   iv?: Uint8Array;
 }
-```
+````
 
 ## File: src/tests/encryption.test.ts
-```typescript
+````typescript
 import { describe, expect, test } from "bun:test";
 import { createCipher } from "../encryption/index";
 import { CipherSuite } from "../types";
@@ -2003,13 +3373,15 @@ describe("Encryption Module", () => {
     });
   });
 });
-```
+````
 
 ## File: src/types/index.ts
-```typescript
+````typescript
 /**
  * Types for the Walrus SDK
  */
+
+import type { LoggerOptions } from '../utils/logger';
 
 /**
  * Configuration options for the Walrus client
@@ -2032,6 +3404,9 @@ export interface ClientOptions {
 
   /** Custom fetch implementation (defaults to Bun's native fetch) */
   fetch?: typeof fetch;
+
+  /** Logger configuration options */
+  logger?: LoggerOptions;
 }
 
 /**
@@ -2236,10 +3611,10 @@ export type WalrusError = Error & {
   statusCode?: number;
   cause?: unknown;
 };
-```
+````
 
 ## File: src/utils/constants.ts
-```typescript
+````typescript
 /**
  * Default endpoints for the Walrus testnet
  */
@@ -2301,10 +3676,10 @@ export const DEFAULT_CONFIG = {
   /** Default maximum size for uploads when content length is unknown (5MB) */
   MAX_UNKNOWN_LENGTH_UPLOAD_SIZE: 5 * 1024 * 1024,
 };
-```
+````
 
 ## File: src/utils/helpers.ts
-```typescript
+````typescript
 import type { StoreResponse } from '../types';
 
 /**
@@ -2465,10 +3840,239 @@ export function getContentTypeFromFilename(filename: string): string {
 
   return contentTypes[ext] || 'application/octet-stream';
 }
-```
+````
+
+## File: src/utils/logger.ts
+````typescript
+import winston, { format, transports } from 'winston';
+
+/**
+ * Log levels for the Walrus SDK
+ */
+export enum LogLevel {
+  ERROR = 'error',
+  WARN = 'warn',
+  INFO = 'info',
+  DEBUG = 'debug',
+}
+
+/**
+ * Options for configuring the logger
+ */
+export interface LoggerOptions {
+  /** The minimum log level to display */
+  level?: LogLevel;
+  /** Whether to enable console output */
+  console?: boolean;
+  /** The format to use for console output */
+  consoleFormat?: 'simple' | 'json';
+  /** Whether to track and log function execution times */
+  trackTiming?: boolean;
+  /** Minimum time in milliseconds to log for performance tracking */
+  minTimingThreshold?: number;
+}
+
+/**
+ * A wrapper around Winston logger with timing capabilities
+ */
+class WalrusLogger {
+  private logger: winston.Logger;
+  private timers: Map<string, number> = new Map();
+  private trackTiming: boolean;
+  private minTimingThreshold: number;
+
+  /**
+   * Create a new logger instance
+   * @param options Configuration options
+   */
+  constructor(options: LoggerOptions = {}) {
+    const {
+      level = LogLevel.INFO,
+      console = true,
+      consoleFormat = 'simple',
+      trackTiming = true,
+      minTimingThreshold = 0,
+    } = options;
+
+    // Define transports
+    const logTransports: winston.transport[] = [];
+
+    // Add console transport if enabled
+    if (console) {
+      const formatOptions = consoleFormat === 'json'
+        ? format.combine(format.timestamp(), format.json())
+        : format.combine(
+          format.colorize(),
+          format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+          format.printf(({ timestamp, level, message, ...meta }) => {
+            const metaStr = Object.keys(meta).length
+              ? ` ${JSON.stringify(meta)}`
+              : '';
+            return `${timestamp} [${level}]: ${message}${metaStr}`;
+          })
+        );
+
+      logTransports.push(
+        new transports.Console({
+          format: formatOptions,
+        })
+      );
+    }
+
+    // Create the logger
+    this.logger = winston.createLogger({
+      level,
+      levels: winston.config.npm.levels,
+      transports: logTransports,
+    });
+
+    this.trackTiming = trackTiming;
+    this.minTimingThreshold = minTimingThreshold;
+  }
+
+  /**
+   * Log an error message
+   * @param message Message to log
+   * @param meta Additional metadata
+   */
+  error(message: string, meta: Record<string, unknown> = {}): void {
+    this.logger.error(message, meta);
+  }
+
+  /**
+   * Log a warning message
+   * @param message Message to log
+   * @param meta Additional metadata
+   */
+  warn(message: string, meta: Record<string, unknown> = {}): void {
+    this.logger.warn(message, meta);
+  }
+
+  /**
+   * Log an informational message
+   * @param message Message to log
+   * @param meta Additional metadata
+   */
+  info(message: string, meta: Record<string, unknown> = {}): void {
+    this.logger.info(message, meta);
+  }
+
+  /**
+   * Log a debug message
+   * @param message Message to log
+   * @param meta Additional metadata
+   */
+  debug(message: string, meta: Record<string, unknown> = {}): void {
+    this.logger.debug(message, meta);
+  }
+
+  /**
+   * Start timing a function
+   * @param label Label to identify the timer
+   */
+  startTimer(label: string): void {
+    if (!this.trackTiming) return;
+    this.timers.set(label, performance.now());
+  }
+
+  /**
+   * End timing a function and log the result
+   * @param label Label to identify the timer
+   * @param meta Additional metadata
+   */
+  endTimer(label: string, meta: Record<string, unknown> = {}): number {
+    if (!this.trackTiming || !this.timers.has(label)) return 0;
+
+    const startTime = this.timers.get(label) as number;
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+
+    // Only log if duration exceeds minimum threshold
+    if (duration >= this.minTimingThreshold) {
+      this.debug(`Execution time for ${label}: ${duration.toFixed(2)}ms`, {
+        ...meta,
+        duration,
+        operation: label,
+      });
+    }
+
+    this.timers.delete(label);
+    return duration;
+  }
+
+  /**
+   * Time the execution of an async function
+   * @param label Label to identify the timer
+   * @param fn The function to time
+   * @param meta Additional metadata
+   * @returns The result of the function
+   */
+  async timeAsync<T>(
+    label: string,
+    fn: () => Promise<T>,
+    meta: Record<string, unknown> = {}
+  ): Promise<T> {
+    this.startTimer(label);
+    try {
+      const result = await fn();
+      this.endTimer(label, meta);
+      return result;
+    } catch (error) {
+      this.endTimer(label, { ...meta, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Time the execution of a synchronous function
+   * @param label Label to identify the timer
+   * @param fn The function to time
+   * @param meta Additional metadata
+   * @returns The result of the function
+   */
+  timeSync<T>(
+    label: string,
+    fn: () => T,
+    meta: Record<string, unknown> = {}
+  ): T {
+    this.startTimer(label);
+    try {
+      const result = fn();
+      this.endTimer(label, meta);
+      return result;
+    } catch (error) {
+      this.endTimer(label, { ...meta, error });
+      throw error;
+    }
+  }
+}
+
+/**
+ * Create a logger with the specified options
+ * @param options Logger configuration options
+ * @returns A configured logger instance
+ */
+export function createLogger(options: LoggerOptions = {}): WalrusLogger {
+  return new WalrusLogger(options);
+}
+
+// Default logger instance with default settings
+let defaultLogger = createLogger();
+
+/**
+ * Configure the default logger
+ * @param options Logger configuration options
+ */
+export function configureLogger(options: LoggerOptions): void {
+  defaultLogger = createLogger(options);
+}
+
+// Export the default logger instance
+export default defaultLogger;
+````
 
 ## File: src/index.ts
-```typescript
+````typescript
 // Export encryption module
 export { createCipher, CipherSuite } from './encryption';
 export type { ContentCipher, CipherOptions } from './encryption';
@@ -2507,10 +4111,14 @@ export {
   DEFAULT_TESTNET_PUBLISHERS,
   DEFAULT_CONFIG
 } from './utils/constants';
-```
+
+// Export logger
+export { default as logger, createLogger, configureLogger, LogLevel } from './utils/logger';
+export type { LoggerOptions } from './utils/logger';
+````
 
 ## File: .gitignore
-```
+````
 # dependencies (bun install)
 node_modules
 
@@ -2547,10 +4155,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 
 project.md
-```
+````
 
 ## File: biome.json
-```json
+````json
 {
 	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
 	"vcs": {
@@ -2584,10 +4192,10 @@ project.md
 		}
 	}
 }
-```
+````
 
 ## File: bun.lock
-```
+````
 {
   "lockfileVersion": 1,
   "workspaces": {
@@ -2697,10 +4305,10 @@ project.md
     "winston-transport": ["winston-transport@4.9.0", "", { "dependencies": { "logform": "^2.7.0", "readable-stream": "^3.6.2", "triple-beam": "^1.3.0" } }, "sha512-8drMJ4rkgaPo1Me4zD/3WLfI/zPdA9o2IipKODunnGDcuqbHwjsbB79ylv04LCGGzU0xQ6vTznOMpQGaLhhm6A=="],
   }
 }
-```
+````
 
 ## File: LICENSE
-```
+````
 MIT License
 
 Copyright (c) 2025 Walrus Typescript SDK
@@ -2722,10 +4330,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
+````
 
 ## File: package.json
-```json
+````json
 {
   "name": "walrus-sdk",
   "version": "0.1.0",
@@ -2746,7 +4354,8 @@ SOFTWARE.
     "example:url": "bun run examples/url-operations.ts",
     "example:client": "bun run examples/custom-client.ts",
     "example:error": "bun run examples/error-handling.ts",
-    "example:json": "bun run examples/json-operations.ts"
+    "example:json": "bun run examples/json-operations.ts",
+    "example:logging": "bun run examples/logging-example.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -2774,10 +4383,338 @@ SOFTWARE.
     "winston": "^3.17.0"
   }
 }
+````
+
+## File: README.md
+````markdown
+<div align="center">
+  <h1>🌊 Walrus SDK</h1>
+  
+  <p>A TypeScript SDK for the <a href="https://docs.walrus.site/">Walrus</a> decentralized storage protocol built on <a href="https://sui.io/">Sui</a></p>
+
+  <p>
+    <a href="https://www.npmjs.com/package/walrus-sdk"><img src="https://img.shields.io/npm/v/walrus-sdk.svg?style=flat-square" alt="npm version"></a>
+    <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
+    <a href="https://docs.walrus.site/"><img src="https://img.shields.io/badge/Docs-Walrus-0096FF?style=flat-square" alt="Docs: Walrus"></a>
+    <a href="https://bun.sh"><img src="https://img.shields.io/badge/Runtime-Bun-F9F1E1?style=flat-square" alt="Runtime: Bun"></a>
+  </p>
+</div>
+
+---
+
+## 📋 Table of Contents
+
+- [What is Walrus?](#-what-is-walrus)
+- [Features](#-features)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [API Reference](#-api-reference)
+- [Examples](#-examples)
+- [Use Cases](#-use-cases)
+- [Future Roadmap](#-future-roadmap)
+- [Development](#-development)
+- [About Walrus](#-about-walrus)
+- [Disclaimer](#-disclaimer)
+- [License](#-license)
+
+## 🌊 What is Walrus?
+
+Walrus is a decentralized storage and data availability protocol designed specifically for large binary files ("blobs"). Built on the [Sui](https://sui.io/) blockchain, Walrus provides:
+
+- **🛡️ Robust, affordable storage** for unstructured content
+- **🔄 High availability** even in the presence of Byzantine faults
+- **⛓️ Integration with the Sui blockchain** for coordination, attestation, and payments
+- **🔒 Client-side encryption** for storing sensitive data
+
+## ✨ Features
+
+<table>
+  <tr>
+    <td>
+      <h3>🗃️ Core Storage Operations</h3>
+      <ul>
+        <li>Store data from multiple sources (byte arrays, files, streams, URLs)</li>
+        <li>Retrieve data in multiple formats</li>
+        <li>Get metadata without downloading content</li>
+      </ul>
+    </td>
+    <td>
+      <h3>🔐 Advanced Encryption</h3>
+      <ul>
+        <li>AES-256-GCM encryption (recommended, provides authentication)</li>
+        <li>AES-256-CBC encryption (with custom IV support)</li>
+        <li>Stream-based encryption and decryption</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h3>📂 File & Stream Handling</h3>
+      <ul>
+        <li>Upload files directly from disk</li>
+        <li>Download blobs to files</li>
+        <li>Stream-based uploads and downloads</li>
+      </ul>
+    </td>
+    <td>
+      <h3>⚠️ Error Handling</h3>
+      <ul>
+        <li>Detailed error types</li>
+        <li>Automatic retries with configurable policy</li>
+        <li>Comprehensive error reporting</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <h3>⚙️ Customization</h3>
+      <ul>
+        <li>Custom endpoints for aggregators and publishers</li>
+        <li>Configurable retry mechanisms</li>
+        <li>Upload size limits and more</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+## 📦 Installation
+
+Install the SDK using your favorite package manager:
+
+```bash
+# Using Bun (recommended)
+bun add walrus-sdk
+
+# Using npm
+npm install walrus-sdk
+
+# Using yarn
+yarn add walrus-sdk
+
+# Using pnpm
+pnpm add walrus-sdk
 ```
 
+## 🚀 Quick Start
+
+```typescript
+import { createWalrusClient } from 'walrus-sdk';
+
+// Create client with default testnet endpoints
+const client = createWalrusClient();
+
+// Store data
+const data = new TextEncoder().encode('Hello, Walrus!');
+const response = await client.store(data, { epochs: 10 });
+
+console.log(`Data stored with blob ID: ${response.blob.blobId}`);
+
+// Retrieve data
+const retrievedData = await client.read(response.blob.blobId);
+console.log(`Retrieved: ${new TextDecoder().decode(retrievedData)}`);
+```
+
+## 📖 API Reference
+
+### Client Creation
+
+```typescript
+import { createWalrusClient } from 'walrus-sdk';
+
+// With default options
+const client = createWalrusClient();
+
+// With custom options
+const client = createWalrusClient({
+  aggregatorURLs: ['https://custom-aggregator.example.com'],
+  publisherURLs: ['https://custom-publisher.example.com'],
+  maxRetries: 3,
+  retryDelay: 1000, // ms
+  maxUnknownLengthUploadSize: 10 * 1024 * 1024, // 10MB
+});
+```
+
+### Core Methods
+
+<table>
+  <tr>
+    <th align="left">Method</th>
+    <th align="left">Description</th>
+  </tr>
+  <tr>
+    <td><code>store(data, options)</code></td>
+    <td>Store data (Uint8Array)</td>
+  </tr>
+  <tr>
+    <td><code>storeFromStream(stream, options)</code></td>
+    <td>Store data from a ReadableStream</td>
+  </tr>
+  <tr>
+    <td><code>storeFromURL(url, options)</code></td>
+    <td>Store content from a URL</td>
+  </tr>
+  <tr>
+    <td><code>storeFile(path, options)</code></td>
+    <td>Store a file from disk</td>
+  </tr>
+  <tr>
+    <td><code>read(blobId, options)</code></td>
+    <td>Read data as Uint8Array</td>
+  </tr>
+  <tr>
+    <td><code>readToFile(blobId, path, options)</code></td>
+    <td>Save blob to a file</td>
+  </tr>
+  <tr>
+    <td><code>readToStream(blobId, options)</code></td>
+    <td>Get blob as ReadableStream</td>
+  </tr>
+  <tr>
+    <td><code>head(blobId)</code></td>
+    <td>Get blob metadata</td>
+  </tr>
+  <tr>
+    <td><code>getAPISpec(isAggregator)</code></td>
+    <td>Get API specification</td>
+  </tr>
+</table>
+
+### Encryption
+
+```typescript
+// Generate a random encryption key
+const key = crypto.getRandomValues(new Uint8Array(32)); // AES-256
+
+// Store with GCM encryption (recommended)
+const response = await client.store(data, {
+  epochs: 10,
+  encryption: {
+    key,
+    suite: CipherSuite.AES256GCM,
+  }
+});
+
+// Retrieve and decrypt data
+const decrypted = await client.read(response.blob.blobId, {
+  encryption: {
+    key,
+    suite: CipherSuite.AES256GCM,
+  }
+});
+```
+
+## 📚 Examples
+
+The SDK includes several example scripts demonstrating various features:
+
+```bash
+# Run examples using the provided scripts
+bun run example:basic      # Basic storage operations
+bun run example:encrypted  # Data encryption/decryption
+bun run example:file       # File and stream operations
+bun run example:url        # Working with remote URLs
+bun run example:client     # Custom client configuration
+bun run example:error      # Error handling techniques
+```
+
+See the [examples directory](./examples) for more detailed examples and documentation.
+
+## 🔍 Use Cases
+
+<div>
+  <table>
+    <tr>
+      <td align="center">
+        <h3>🖼️</h3>
+        <b>NFT and dApp Media Storage</b>
+        <p>Store images, sounds, videos, and other assets for web3 applications</p>
+      </td>
+      <td align="center">
+        <h3>🔒</h3>
+        <b>Encrypted Data</b>
+        <p>Store sensitive information with client-side encryption</p>
+      </td>
+      <td align="center">
+        <h3>🤖</h3>
+        <b>AI Models and Datasets</b>
+        <p>Store model weights, training data, and outputs</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <h3>📜</h3>
+        <b>Blockchain History</b>
+        <p>Archive historical blockchain data</p>
+      </td>
+      <td align="center">
+        <h3>⚡</h3>
+        <b>Layer 2 Data Availability</b>
+        <p>Certify data availability for L2 solutions</p>
+      </td>
+      <td align="center">
+        <h3>🌐</h3>
+        <b>Decentralized Websites</b>
+        <p>Host complete web experiences including HTML, CSS, JS, and media</p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" colspan="3">
+        <h3>🔑</h3>
+        <b>Subscription Models</b>
+        <p>Store encrypted content and manage access via decryption keys</p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+## 🔮 Future Roadmap
+
+The SDK will continue to evolve with these planned features:
+
+- **⛓️ Sui Blockchain Integration:** Verify blob availability and certification on-chain
+- **💰 WAL Token Support:** Purchase storage and stake tokens directly through the SDK
+- **🌐 Walrus Sites:** Deploy decentralized websites with simplified workflows
+
+## 💻 Development
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/walrus-sdk.git
+cd walrus-sdk
+
+# Install dependencies
+bun install
+
+# Build the SDK
+bun run build
+
+# Run tests
+bun test
+```
+
+## ℹ️ About Walrus
+
+Walrus is a decentralized storage protocol with the following key features:
+
+- **📦 Storage and Retrieval:** Write and read blobs with high availability
+- **💸 Cost Efficiency:** Advanced erasure coding keeps storage costs low
+- **⛓️ Sui Blockchain Integration:** Uses Sui for coordination and payment
+- **💰 Tokenomics:** WAL token for staking and storage payments
+- **🔌 Flexible Access:** CLI, SDKs, and HTTP interfaces
+
+## ⚠️ Disclaimer
+
+> **The current Testnet release of Walrus is a preview** intended to showcase the technology and solicit feedback. All transactions use Testnet WAL and SUI which have no value. The store state can be wiped at any point without warning. Do not rely on the Testnet for production purposes.
+
+> **All blobs stored in Walrus are public and discoverable by all.** Do not use Walrus to store secrets or private data without client-side encryption.
+
+## 📄 License
+
+This project is licensed under the [MIT License](./LICENSE) - see the [LICENSE](./LICENSE) file for details.
+````
+
 ## File: tsconfig.json
-```json
+````json
 {
   "compilerOptions": {
     // Environment setup & latest features
@@ -2806,4 +4743,4 @@ SOFTWARE.
     "noPropertyAccessFromIndexSignature": false
   }
 }
-```
+````
