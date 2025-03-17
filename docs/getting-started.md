@@ -14,16 +14,16 @@ Add the Walrus SDK to your project using your preferred package manager:
 
 ```bash
 # Using Bun (recommended)
-bun add walrus-sdk
+bun add walrus-ts
 
 # Using npm
-npm install walrus-sdk
+npm install walrus-ts
 
 # Using yarn
-yarn add walrus-sdk
+yarn add walrus-ts
 
 # Using pnpm
-pnpm add walrus-sdk
+pnpm add walrus-ts
 ```
 
 ## Basic Usage
@@ -31,7 +31,7 @@ pnpm add walrus-sdk
 Here's a simple example to store and retrieve data:
 
 ```typescript
-import { createWalrusClient } from 'walrus-sdk';
+import { createWalrusClient } from 'walrus-ts';
 
 async function basicExample() {
   // Create a Walrus client with default settings
@@ -69,7 +69,7 @@ basicExample();
 You can easily store and retrieve files from the filesystem:
 
 ```typescript
-import { createWalrusClient } from 'walrus-sdk';
+import { createWalrusClient } from 'walrus-ts';
 import { join } from 'path';
 
 async function fileExample() {
@@ -109,7 +109,7 @@ fileExample();
 For sensitive data, you can enable client-side encryption:
 
 ```typescript
-import { createWalrusClient, CipherSuite } from 'walrus-sdk';
+import { createWalrusClient, CipherSuite } from 'walrus-ts';
 
 async function encryptionExample() {
   const client = createWalrusClient();
@@ -157,7 +157,7 @@ encryptionExample();
 You can customize the client with various options:
 
 ```typescript
-import { createWalrusClient, RetryPolicy } from 'walrus-sdk';
+import { createWalrusClient, RetryPolicy } from 'walrus-ts';
 
 // Create a client with custom configuration
 const client = createWalrusClient({

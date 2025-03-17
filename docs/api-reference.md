@@ -37,7 +37,7 @@ A new `WalrusClient` instance.
 #### Example
 
 ```typescript
-import { createWalrusClient } from 'walrus-sdk';
+import { createWalrusClient } from 'walrus-ts';
 
 // With default options (testnet)
 const client = createWalrusClient();

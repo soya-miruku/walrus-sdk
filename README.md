@@ -5,7 +5,7 @@
   <p>A TypeScript SDK for the <a href="https://docs.walrus.site/">Walrus</a> decentralized storage protocol built on <a href="https://sui.io/">Sui</a></p>
 
   <p>
-    <a href="https://www.npmjs.com/package/walrus-sdk"><img src="https://img.shields.io/npm/v/walrus-sdk.svg?style=flat-square" alt="npm version"></a>
+    <a href="https://www.npmjs.com/package/walrus-ts"><img src="https://img.shields.io/npm/v/walrus-ts.svg?style=flat-square" alt="npm version"></a>
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
     <a href="https://docs.walrus.site/"><img src="https://img.shields.io/badge/Docs-Walrus-0096FF?style=flat-square" alt="Docs: Walrus"></a>
     <a href="https://bun.sh"><img src="https://img.shields.io/badge/Runtime-Bun-F9F1E1?style=flat-square" alt="Runtime: Bun"></a>
@@ -95,22 +95,22 @@ Install the SDK using your favorite package manager:
 
 ```bash
 # Using Bun (recommended)
-bun add walrus-sdk
+bun add walrus-ts
 
 # Using npm
-npm install walrus-sdk
+npm install walrus-ts
 
 # Using yarn
-yarn add walrus-sdk
+yarn add walrus-ts
 
 # Using pnpm
-pnpm add walrus-sdk
+pnpm add walrus-ts
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { createWalrusClient } from 'walrus-sdk';
+import { createWalrusClient } from 'walrus-ts';
 
 // Create client with default testnet endpoints
 const client = createWalrusClient();
@@ -131,7 +131,7 @@ console.log(`Retrieved: ${new TextDecoder().decode(retrievedData)}`);
 ### Client Creation
 
 ```typescript
-import { createWalrusClient } from 'walrus-sdk';
+import { createWalrusClient } from 'walrus-ts';
 
 // With default options
 const client = createWalrusClient();
@@ -242,7 +242,7 @@ bun run example:logging    # Logging configuration
 ### Working with JSON Data
 
 ```typescript
-import { createWalrusClient } from 'walrus-sdk';
+import { createWalrusClient } from 'walrus-ts';
 
 // Create client
 const client = createWalrusClient();
@@ -358,8 +358,8 @@ The SDK will continue to evolve with these planned features:
 
 ```bash
 # Clone the repository
-git clone https://github.com/soya-miruku/walrus-sdk.git
-cd walrus-sdk
+git clone https://github.com/soya-miruku/walrus-ts.git
+cd walrus-ts
 
 # Install dependencies
 bun install

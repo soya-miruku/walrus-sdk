@@ -94,7 +94,7 @@ const key = await deriveKeyFromPassword('my-secure-password', salt);
 Here's how to use encryption with the Walrus SDK:
 
 ```typescript
-import { createWalrusClient, CipherSuite } from 'walrus-sdk';
+import { createWalrusClient, CipherSuite } from 'walrus-ts';
 
 async function encryptedStorageExample() {
   // Create Walrus client
@@ -169,7 +169,7 @@ const decrypted = await client.read(response.blob.blobId, {
 For large files, the SDK automatically handles encryption in chunks when using streaming methods:
 
 ```typescript
-import { createWalrusClient, CipherSuite } from 'walrus-sdk';
+import { createWalrusClient, CipherSuite } from 'walrus-ts';
 
 async function encryptedFileExample() {
   const client = createWalrusClient();
