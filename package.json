@@ -1,6 +1,6 @@
 {
 	"name": "walrus-ts",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "TypeScript SDK for the Walrus decentralized storage protocol",
 	"module": "src/index.ts",
 	"type": "module",
